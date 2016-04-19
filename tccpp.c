@@ -162,7 +162,7 @@ ST_FUNC void cstr_cat(CString *cstr, const char *str, int len)
     size = cstr->size + len;
     if (size > cstr->size_allocated)
         cstr_realloc(cstr, size);
-    memcpy(((unsigned char *)cstr->data) + cstr->size, str, len);
+    memmove(((unsigned char *)cstr->data) + cstr->size, str, len);
     cstr->size = size;
 }
 
