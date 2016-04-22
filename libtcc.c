@@ -514,11 +514,7 @@ ST_FUNC Section *new_section(TCCState *s1, const char *name, int sh_type, int sh
         sec->sh_addralign = 1;
         break;
     default:
-        #ifdef TCC_TARGET_I386
-        sec->sh_addralign =  4; /* gcc/pcc default aligment for i386 */
-        #else
-        sec->sh_addralign = 32; /* default conservative alignment */
-        #endif
+        sec->sh_addralign =  PTR_SIZE; /* gcc/pcc default alignment for i386 */
         break;
     }
 
