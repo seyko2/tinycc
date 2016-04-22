@@ -142,7 +142,7 @@ ST_FUNC TinyAlloc *tal_new(TinyAlloc **pal, size_t limit, size_t size)
     return al;
 }
 
-ST_FUNC void tal_delete(TinyAlloc *al)
+ST_FUNC void tal_delete(TinyAlloc *al, const char *name)
 {
     TinyAlloc *next;
 
@@ -150,7 +150,9 @@ tail_call:
     if (!al)
         return;
 #ifdef TAL_INFO
-    fprintf(stderr, "limit=%5d, size=%5g MB, nb_peak=%6d, nb_total=%8d, nb_missed=%6d, usage=%5.1f%%\n",
+    if (tcc_state->do_bench)
+	fprintf(stderr, "%s: limit=%5d, size=%5g MB, nb_peak=%6d, nb_total=%8d, nb_missed=%7d, usage=%5.1f%%\n",
+	    name,
             al->limit, al->size / 1024.0 / 1024.0, al->nb_peak, al->nb_total, al->nb_missed,
             (al->peak_p - al->buffer) * 100.0 / al->size);
 #endif
@@ -3787,11 +3789,11 @@ ST_FUNC void preprocess_delete(void)
     tok_str_free(tokstr_buf.str);
 
     /* free allocators */
-    tal_delete(toksym_alloc);
+    tal_delete(toksym_alloc, "toksym");
     toksym_alloc = NULL;
-    tal_delete(tokstr_alloc);
+    tal_delete(tokstr_alloc, "tokstr");
     tokstr_alloc = NULL;
-    tal_delete(cstr_alloc);
+    tal_delete(cstr_alloc, "cstr  ");
     cstr_alloc = NULL;
 }
 

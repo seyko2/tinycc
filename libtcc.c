@@ -1087,9 +1087,9 @@ static void tcc_cleanup(void)
 {
     if (NULL == tcc_state)
         return;
-    tcc_state = NULL;
 
     preprocess_delete();
+    tcc_state = NULL;
 
     /* free sym_pools */
     dynarray_reset(&sym_pools, &nb_sym_pools);

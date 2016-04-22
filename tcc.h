@@ -377,7 +377,7 @@ static inline void write64le(unsigned char *p, uint64_t x)
 #define TOKSTR_TAL_SIZE     (768 * 1024) /* allocator for tiny TokenString instances */
 #define CSTR_TAL_SIZE       (256 * 1024) /* allocator for tiny CString instances */
 #define TOKSYM_TAL_LIMIT    256 /* prefer unique limits to distinguish allocators debug msgs */
-#define TOKSTR_TAL_LIMIT    128 /* 32 * sizeof(int) */
+#define TOKSTR_TAL_LIMIT    512
 #define CSTR_TAL_LIMIT      1024
 
 /* token symbol management */
