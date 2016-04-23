@@ -409,9 +409,15 @@ static TokenSym *tok_alloc_new(TokenSym **pts, const char *str, int len)
     return ts;
 }
 
-#define TOK_HASH_INIT 1
-#define TOK_HASH_FUNC(h, c) ((h) + ((h) << 5) + ((h) >> 27) + (c))
-
+#if __TINYC__
+#define TOK_HASH_INIT(h) h = 1
+#define TOK_HASH_FUNC(h, c) h += (h << 5) + (h >> 27) + c
+#define TOK_HASH_FINISH(h)
+#else
+#define TOK_HASH_INIT(h) { unsigned int _h = 1
+#define TOK_HASH_FUNC(h, c) _h += (_h << 5) + (_h >> 27) + c
+#define TOK_HASH_FINISH(h) h = _h; }
+#endif
 
 /* find a token and add it if not found */
 ST_FUNC TokenSym *tok_alloc(const char *str, int len)
@@ -420,9 +426,10 @@ ST_FUNC TokenSym *tok_alloc(const char *str, int len)
     int i;
     unsigned int h;
     
-    h = TOK_HASH_INIT;
+    TOK_HASH_INIT(h);
     for(i=0;i<len;i++)
-        h = TOK_HASH_FUNC(h, ((unsigned char *)str)[i]);
+        TOK_HASH_FUNC(h,((unsigned char *)str)[i]);
+    TOK_HASH_FINISH(h);
     h &= (TOK_HASH_SIZE - 1);
 
     pts = &hash_ident[h];
@@ -448,9 +455,10 @@ ST_FUNC TokenSym** symtab_tok_find(const char *str, int len)
     int i;
     unsigned int h;
 
-    h = TOK_HASH_INIT;
+    TOK_HASH_INIT(h);
     for(i=0;i<len;i++)
-        h = TOK_HASH_FUNC(h, ((unsigned char *)str)[i]);
+        TOK_HASH_FUNC(h,((unsigned char *)str)[i]);
+    TOK_HASH_FINISH(h);
     h &= (TOK_HASH_SIZE - 1);
 
     pts = &hash_ident[h];
@@ -1682,12 +1690,13 @@ static inline int hash_cached_include(const char *filename)
     const unsigned char *s;
     unsigned int h;
 
-    h = TOK_HASH_INIT;
+    TOK_HASH_INIT(h);
     s = (unsigned char *) filename;
     while (*s) {
-        h = TOK_HASH_FUNC(h, *s);
+        TOK_HASH_FUNC(h,*s);
         s++;
     }
+    TOK_HASH_FINISH(h);
     h &= (CACHED_INCLUDES_HASH_SIZE - 1);
     return h;
 }
@@ -2810,10 +2819,11 @@ maybe_newline:
 #endif
     parse_ident_fast:
         p1 = p;
-        h = TOK_HASH_INIT;
-        h = TOK_HASH_FUNC(h, c);
+        TOK_HASH_INIT(h);
+        TOK_HASH_FUNC(h,c);
         while (c = *++p, isidnum_table[c - CH_EOF] & (IS_ID|IS_NUM))
-            h = TOK_HASH_FUNC(h, c);
+            TOK_HASH_FUNC(h,c);
+	TOK_HASH_FINISH(h);
         len = p - p1;
         if (c != '\\') {
             TokenSym **pts;
