@@ -2906,7 +2906,6 @@ maybe_newline:
             if (!((isidnum_table[c - CH_EOF] & (IS_ID|IS_NUM))
                   || c == '.'
                   || ((c == '+' || c == '-')
-                      && !tcc_state->no_hex_floats
                       && (t == 'e' || t == 'E' || t == 'p' || t == 'P')
                       )))
                 break;
