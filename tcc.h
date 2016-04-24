@@ -716,6 +716,7 @@ struct TCCState {
 				   Liuux 2.4.26 can't find initrd when compiled with a new algorithm */
     int dollars_in_identifiers;	/* allows '$' char in indentifiers */
     int normalize_inc_dirs;	/* remove non-existent or duplicate directories from include paths */
+    int no_hex_floats;		/* don't accept 0x123e-3 float format */
 
     /* warning switches */
     int warn_write_strings;
