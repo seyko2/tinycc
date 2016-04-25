@@ -3625,6 +3625,8 @@ static void macro_subst(
 
                 tok = t;
                 macro_subst_tok(tok_str, nested_list, s, can_read_stream);
+                if (tcc_state->Eflag == PREPROCESS_PRECISE)
+                    tok_str_add2(&tokstr_buf, ' ', 0);
 
                 if (str.alloc == 3) {
                     /* already finished by reading function macro arguments */
