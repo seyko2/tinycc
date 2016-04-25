@@ -2409,10 +2409,9 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
             cstr_cat(&pas->linker_arg, optarg, 0);
             break;
         case TCC_OPTION_E:
-    	    if (s->output_type)
+            if (s->output_type)
                 tcc_warning("-E: some compiler action already specified (%d)", s->output_type);
             s->output_type = TCC_OUTPUT_PREPROCESS;
-            s->Eflag = atoi(optarg) + 1;
             break;
         case TCC_OPTION_P:
             s->Pflag = atoi(optarg) + 1;

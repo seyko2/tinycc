@@ -1,2 +1,9 @@
-    9999: 1: movw (%esi), %bx; .section __ex_table, "a"; .long 9999b, 6001f ;
+
+
+
+
+
+
+
+    9999: 1: movw (%esi), %bx; .section __ex_table, "a"; .long 9999b, 6001f ; 
 6001:

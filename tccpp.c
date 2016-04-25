@@ -3625,8 +3625,7 @@ static void macro_subst(
 
                 tok = t;
                 macro_subst_tok(tok_str, nested_list, s, can_read_stream);
-                if (tcc_state->Eflag == PREPROCESS_PRECISE)
-                    tok_str_add2(&tokstr_buf, ' ', 0);
+                tok_str_add2(&tokstr_buf, ' ', 0);
 
                 if (str.alloc == 3) {
                     /* already finished by reading function macro arguments */
@@ -3686,8 +3685,7 @@ ST_FUNC void next(void)
             tokstr_buf.len = 0;
             nested_list = NULL;
             macro_subst_tok(&tokstr_buf, &nested_list, s, 1);
-            if (tcc_state->Eflag == PREPROCESS_PRECISE)
-                tok_str_add2(&tokstr_buf, ' ', 0);
+            tok_str_add2(&tokstr_buf, ' ', 0);
             tok_str_add(&tokstr_buf, 0);
             begin_macro(&tokstr_buf, 2);
             goto redo;

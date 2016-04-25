@@ -780,11 +780,6 @@ struct TCCState {
 	LINE_MACRO_OUTPUT_FORMAT_NONE,
 	LINE_MACRO_OUTPUT_FORMAT_STD
     } Pflag; /* -P switch */
-    enum {
-        PREPROCESS_NONE,        /* no -E switch present */
-        PREPROCESS_PRECISE,     /* add space after macro expansion */
-        PREPROCESS_CLASSIC,     /* a mode mostly compatible with gcc */
-    } Eflag; /* -E switch */
     char dflag; /* -dX value */
     FILE *dffp;
 
