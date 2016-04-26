@@ -2131,7 +2131,7 @@ static const TCCOption tcc_options[] = {
     { "v", TCC_OPTION_v, TCC_OPTION_HAS_ARG | TCC_OPTION_NOSEP },
     { "w", TCC_OPTION_w, 0 },
     { "pipe", TCC_OPTION_pipe, 0},
-    { "E", TCC_OPTION_E, TCC_OPTION_HAS_ARG | TCC_OPTION_NOSEP},
+    { "E", TCC_OPTION_E, 0},
     { "MD", TCC_OPTION_MD, 0},
     { "MF", TCC_OPTION_MF, TCC_OPTION_HAS_ARG },
     { "x", TCC_OPTION_x, TCC_OPTION_HAS_ARG },
@@ -2409,7 +2409,7 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
             cstr_cat(&pas->linker_arg, optarg, 0);
             break;
         case TCC_OPTION_E:
-            if (s->output_type)
+    	    if (s->output_type)
                 tcc_warning("-E: some compiler action already specified (%d)", s->output_type);
             s->output_type = TCC_OUTPUT_PREPROCESS;
             break;
