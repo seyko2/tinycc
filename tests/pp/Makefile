@@ -10,15 +10,25 @@ all test : $(TESTS)
 
 %.test: %.c %.expect
 	@echo PPTest $* ...
-	-@$(TCC) -E -P $< >$*.output 2>&1 ; \
+	@$(TCC) -E -P $< >$*.output 2>&1 ; \
 	    diff -Nu -b -B -I "^#" $(EXTRA_DIFF_OPTS) $*.expect $*.output \
 	    && rm -f $*.output
 
 %.test: %.S %.expect
 	@echo PPTest $* ...
-	-@$(TCC) -E -P $< >$*.output 2>&1 ; \
+	@$(TCC) -E -P $< >$*.output 2>&1 ; \
 	    diff -Nu -b -B -I "^#" $(EXTRA_DIFF_OPTS) $*.expect $*.output \
 	    && rm -f $*.output
+
+# automatically generate .expect files with gcc:
+%.expect: %.c
+	gcc -E -P $*.c >$*.expect 2>&1
+
+%.expect: %.S
+	gcc -E -P $*.S >$*.expect 2>&1
+
+# tell make not to delete
+.PRECIOUS: %.expect
 
 clean:
 	rm -vf *.output
