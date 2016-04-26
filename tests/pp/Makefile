@@ -10,13 +10,13 @@ all test : $(TESTS)
 
 %.test: %.c %.expect
 	@echo PPTest $* ...
-	-@$(TCC) -E1 -P $< >$*.output 2>&1 ; \
+	-@$(TCC) -E -P $< >$*.output 2>&1 ; \
 	    diff -Nu -b -B -I "^#" $(EXTRA_DIFF_OPTS) $*.expect $*.output \
 	    && rm -f $*.output
 
 %.test: %.S %.expect
 	@echo PPTest $* ...
-	-@$(TCC) -E1 -P $< >$*.output 2>&1 ; \
+	-@$(TCC) -E -P $< >$*.output 2>&1 ; \
 	    diff -Nu -b -B -I "^#" $(EXTRA_DIFF_OPTS) $*.expect $*.output \
 	    && rm -f $*.output
 
