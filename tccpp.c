@@ -3375,7 +3375,6 @@ static int macro_subst_tok(
             TokenString ws_str;
             tok_str_new(&ws_str);
 
-            spc = 0;
             parse_flags |= PARSE_FLAG_SPACES | PARSE_FLAG_LINEFEED
                 | PARSE_FLAG_ACCEPT_STRAYS;
 
@@ -3625,7 +3624,7 @@ static void macro_subst(
 
                 tok = t;
                 macro_subst_tok(tok_str, nested_list, s, can_read_stream);
-                tok_str_add2(&tokstr_buf, ' ', 0);
+                tok_str_add(&tokstr_buf, ' ');
 
                 if (str.alloc == 3) {
                     /* already finished by reading function macro arguments */
@@ -3639,7 +3638,6 @@ static void macro_subst(
             spc = (tok_str->len &&
                    is_space(tok_last(tok_str->str,
                                      tok_str->str + tok_str->len)));
-
         } else {
 
             if (t == '\\' && !(parse_flags & PARSE_FLAG_ACCEPT_STRAYS))
@@ -3683,9 +3681,8 @@ ST_FUNC void next(void)
         if (s) {
             Sym *nested_list = NULL;
             tokstr_buf.len = 0;
-            nested_list = NULL;
             macro_subst_tok(&tokstr_buf, &nested_list, s, 1);
-            tok_str_add2(&tokstr_buf, ' ', 0);
+            tok_str_add(&tokstr_buf, ' ');
             tok_str_add(&tokstr_buf, 0);
             begin_macro(&tokstr_buf, 2);
             goto redo;
