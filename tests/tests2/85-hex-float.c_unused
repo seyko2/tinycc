@@ -7,5 +7,5 @@ int main(void)
     return 0;
 }
 // 0x10 0x1e // pcc, CompCert
-// 0x10 0x1d // tcc
+// 0x10 0x1d // tcc with NEW_PPNUM_CODE
 
