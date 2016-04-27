@@ -3728,6 +3728,24 @@ ST_FUNC void next(void)
                         if ((ch == '+') || (ch == '-'))
                             tok_str_add(&tokstr_buf, ' ');
                     }
+                } else
+                if (t == TOK_INC) {
+                    if (macro_ptr) {
+                        t = *macro_ptr;
+                        if (t == '+') {
+                            tok_str_add(&tokstr_buf, '+');
+                            tok_str_add(&tokstr_buf, ' ');
+                            macro_ptr++;
+                        }
+                    }
+                    else {
+                        ch = handle_eob();
+                        if (ch == '+') {
+                            tok_str_add(&tokstr_buf, '+');
+                            tok_str_add(&tokstr_buf, ' ');
+                            file->buf_ptr++;
+                        }
+                    }
                 }
             }
             else {
