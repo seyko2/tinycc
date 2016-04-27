@@ -8,4 +8,5 @@ int array[NUM_NS_TYPES];
 int main()
 {
     printf("n+1 = %d\n", n+1);
+    printf("n+1 = %d\n", 0xe+1);
 }
