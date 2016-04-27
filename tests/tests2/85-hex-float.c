@@ -1,0 +1,11 @@
+#include <stdio.h>
+int main(void)
+{
+    int E = 0;
+#define E 1
+    printf ("0x%x 0x%x\n", 0x11-E, 0x1e-E);
+    return 0;
+}
+// 0x10 0x1e // pcc, CompCert
+// 0x10 0x1d // tcc
+
