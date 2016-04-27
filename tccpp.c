@@ -48,6 +48,7 @@ static TokenSym *hash_ident[TOK_HASH_SIZE];
 static char token_buf[STRING_MAX_SIZE + 1];
 static CString cstr_buf, cstr_mbuf;
 static TokenString tokstr_buf;
+static TokenString tokstr_buf2;
 static unsigned char isidnum_table[256 - CH_EOF];
 /* isidnum_table flags: */
 #define IS_SPC 1
@@ -3693,9 +3694,47 @@ ST_FUNC void next(void)
         /* if reading from file, try to substitute macros */
         s = define_find(tok);
         if (s) {
-            Sym *nested_list = NULL;
-            tokstr_buf.len = 0;
-            macro_subst_tok(&tokstr_buf, &nested_list, s, 1);
+            if (tcc_state->output_type == TCC_OUTPUT_PREPROCESS)
+            {
+                int t = 0;
+                Sym *nested_list = NULL;
+                tokstr_buf2.len = 0;
+                macro_subst_tok(&tokstr_buf2, &nested_list, s, 1);
+                {
+                    const int *str  = tokstr_buf2.str;
+                    const int *str1 = tokstr_buf2.str + tokstr_buf2.len;
+                    int tok = 0;
+                    CValue cval;
+
+                    tokstr_buf.len = 0;
+                    while (str < str1) {
+                        t = tok;
+                        TOK_GET(&tok, &str, &cval);
+                        if ((t == TOK_PPNUM) && ((tok == '+') || (tok == '-'))) {
+                            tok_str_add(&tokstr_buf, ' ');
+                        }
+                        tok_str_add2(&tokstr_buf, tok, &cval);
+                    }
+                    t = tok;
+                }
+                if (t == TOK_PPNUM) {
+                    if (macro_ptr) {
+                        t = *macro_ptr;
+                        if ((t == '+') || (t == '-'))
+                            tok_str_add(&tokstr_buf, ' ');
+                    }
+                    else {
+                        ch = handle_eob();
+                        if ((ch == '+') || (ch == '-'))
+                            tok_str_add(&tokstr_buf, ' ');
+                    }
+                }
+            }
+            else {
+                Sym *nested_list = NULL;
+                tokstr_buf.len = 0;
+                macro_subst_tok(&tokstr_buf, &nested_list, s, 1);
+            }
             tok_str_add(&tokstr_buf, 0);
             begin_macro(&tokstr_buf, 2);
             goto redo;
