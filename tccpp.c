@@ -1427,9 +1427,8 @@ ST_FUNC void print_defines(void)
 }
 
 /* defines handling */
-ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg)
+ST_INLN void define_push_r(int v, int macro_type, TokenString *str, Sym *first_arg, int recursive)
 {
-    int recursive;
     Sym *s;
 
     if (str) {
@@ -1442,24 +1441,12 @@ ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg
     s->d = str ? tok_str_dup(str) : NULL;
     s->next = first_arg;
     table_ident[v - TOK_IDENT]->sym_define = s;
-
-    recursive = 0;
-    if (str && str->str)
-    {
-        const int *str0 = str->str;
-        const int *str1 = str->str + str->len;
-        int tok;
-        CValue cval;
-
-        while (str0 < str1) {
-            TOK_GET(&tok, &str0, &cval);
-            if (tok == v) {
-                recursive = 1;
-                break;
-            }
-        }
-    }
     s->r = recursive;
+}
+
+ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg)
+{
+    define_push_r(v, macro_type, str, first_arg, 1);
 }
 
 #ifdef CONFIG_TCC_EXSYMTAB
@@ -1627,6 +1614,7 @@ ST_FUNC void parse_define(void)
     Sym *s, *first, **ps;
     int v, t, varg, is_vaargs, spc;
     int saved_parse_flags = parse_flags;
+    int recursive;
 
     v = tok;
     if (v < TOK_IDENT)
@@ -1636,6 +1624,8 @@ ST_FUNC void parse_define(void)
     t = MACRO_OBJ;
     /* '(' must be just after macro definition for MACRO_FUNC */
     parse_flags |= PARSE_FLAG_SPACES;
+    recursive = 0;
+
     next_nomacro_spc();
     if (tok == '(') {
         /* must be able to parse TOK_DOTS (in asm mode '.' can be part of identifier) */
@@ -1690,6 +1680,8 @@ ST_FUNC void parse_define(void)
             goto skip;
         }
         tok_str_add2(&tokstr_buf, tok, &tokc);
+        if (tok == v)
+            recursive++;
     skip:
         next_nomacro_spc();
     }
@@ -1701,7 +1693,7 @@ ST_FUNC void parse_define(void)
     if (3 == spc)
 bad_twosharp:
         tcc_error("'##' cannot appear at either end of macro");
-    define_push(v, t, &tokstr_buf, first);
+    define_push_r(v, t, &tokstr_buf, first, recursive);
     define_print(v);
 }
 
