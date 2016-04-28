@@ -1429,6 +1429,7 @@ ST_FUNC void print_defines(void)
 /* defines handling */
 ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg)
 {
+    int recursive;
     Sym *s;
 
     if (str) {
@@ -1441,6 +1442,24 @@ ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg
     s->d = str ? tok_str_dup(str) : NULL;
     s->next = first_arg;
     table_ident[v - TOK_IDENT]->sym_define = s;
+
+    recursive = 0;
+    if (str && str->str)
+    {
+        const int *str0 = str->str;
+        const int *str1 = str->str + str->len;
+        int tok;
+        CValue cval;
+
+        while (str0 < str1) {
+            TOK_GET(&tok, &str0, &cval);
+            if (tok == v) {
+                recursive = 1;
+                break;
+            }
+        }
+    }
+    s->r = recursive;
 }
 
 #ifdef CONFIG_TCC_EXSYMTAB
@@ -3390,7 +3409,10 @@ static int macro_subst_tok(
     CValue cval;
     CString cstr;
     char buf[32];
-    
+    int recursive;
+
+    recursive = s->r;
+
     /* if symbol is a macro, prepare substitution */
     /* special macros */
     if (tok == TOK___LINE__) {
@@ -3487,8 +3509,11 @@ static int macro_subst_tok(
                         parlevel--;
                     if (tok == TOK_LINEFEED)
                         tok = ' ';
-                    if (!check_space(tok, &spc))
+                    if (!check_space(tok, &spc)) {
                         tok_str_add2(&str, tok, &tokc);
+                        if (tok == s->v)
+                            recursive = 1;
+                    }
                     next_argstream(nested_list, can_read_stream, NULL);
                 }
                 if (parlevel)
@@ -3527,7 +3552,19 @@ static int macro_subst_tok(
             }
         }
 
-        sym_push2(nested_list, s->v, 0, 0);
+        if (!recursive) {
+            if (macro_ptr) {
+                t = *macro_ptr;
+                if (t == '(')
+                    recursive = 1;
+            }
+            else {
+                ch = handle_eob();
+                if (ch == '(')
+                    recursive = 1;
+            }
+        }
+        sym_push2(nested_list, s->v, 0, recursive);
         parse_flags = saved_parse_flags;
         macro_subst(tok_str, nested_list, mstr, can_read_stream);
 
@@ -3665,12 +3702,15 @@ static void macro_subst(
             break;
 
         if (t >= TOK_IDENT && 0 == nosubst) {
+            Sym *s2;
+
             s = define_find(t);
             if (s == NULL)
                 goto no_subst;
 
             /* if nested substitution, do nothing */
-            if (sym_find2(*nested_list, t)) {
+            s2 = sym_find2(*nested_list, t);
+            if (s2 && s2->c) {
                 /* and mark it as TOK_NOSUBST, so it doesn't get subst'd again */
                 tok_str_add2(tok_str, TOK_NOSUBST, NULL);
                 goto no_subst;
