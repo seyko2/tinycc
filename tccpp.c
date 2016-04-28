@@ -3872,6 +3872,8 @@ ST_FUNC void preprocess_new(void)
     cstr_realloc(&cstr_mbuf, STRING_MAX_SIZE);
     tok_str_new(&tokstr_buf);
     tok_str_realloc(&tokstr_buf, TOKSTR_MAX_SIZE);
+    tok_str_new(&tokstr_buf2);
+    tok_str_realloc(&tokstr_buf2, TOKSTR_MAX_SIZE);
     
     tok_ident = TOK_IDENT;
     p = tcc_keywords;
@@ -3911,6 +3913,7 @@ ST_FUNC void preprocess_delete(void)
     cstr_free(&cstr_buf);
     cstr_free(&cstr_mbuf);
     tok_str_free(tokstr_buf.str);
+    tok_str_free(tokstr_buf2.str);
 
     /* free allocators */
     tal_delete(toksym_alloc, "toksym");
