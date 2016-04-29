@@ -7,13 +7,20 @@ This a clone of the mob development repo at http://repo.or.cz/tinycc.git
 |mob         | [![Build Status](https://travis-ci.org/wqweto/tinycc.svg?branch=mob)](https://travis-ci.org/wqweto/tinycc) |
 |dev         | [![Build Status](https://travis-ci.org/wqweto/tinycc.svg?branch=dev)](https://travis-ci.org/wqweto/tinycc) | 
 
+### Branch Target
+
+A patches which allow to compile linux kernels. Some patches are
+not considered as right or needed for general purpose by people
+in tcc-devel mail list. A synchronization with [mob] repository
+is performed manually.
+
 ### License
 
-Tiny C Compiler project is licensed under [LGPL](https://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License) but currently there is an effort to relicense the project under [MIT License](https://en.wikipedia.org/wiki/MIT_License). See RELICENSING file in root for current status.
-
-### Branch Policy
-
-The "dev" branch is the one where all contributions will be merged before reaching "mob". If you plan to propose a patch, please commit into the "dev" branch or its own feature branch. Direct commit to "mob" are not permitted.
+Tiny C Compiler project is licensed under
+[LGPL](https://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License)
+but currently there is an effort to relicense the project under [MIT
+License](https://en.wikipedia.org/wiki/MIT_License). See RELICENSING file
+in root for current status.
 
 ### Original Fabrice Bellard readme
 
