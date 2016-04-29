@@ -1956,6 +1956,8 @@ static int tcc_set_linker(TCCState *s, const char *option)
 
         } else if (link_option(option, "as-needed", &p)) {
             ignoring = 1;
+        } else if (link_option(option, "flat_namespace", &p)) {
+            ignoring = 1;
         } else if (link_option(option, "O", &p)) {
             ignoring = 1;
         } else if (link_option(option, "rpath=", &p)) {
