@@ -6,12 +6,9 @@ X(X(1))
 #define B A
 return A + B;
 
-#if 0
 #undef A
 #undef B
 
-#define A 1 + B
+#define A B+1
 #define B A
 return A + B;
-// currently output of the gcc and tcc differs
-#endif

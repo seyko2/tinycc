@@ -3775,6 +3775,7 @@ ST_FUNC void next(void)
         /* if reading from file, try to substitute macros */
         s = define_find(tok);
         if (s) {
+            s->asm_label = -1;
             if (tcc_state->output_type == TCC_OUTPUT_PREPROCESS)
             {
                 int t = 0;
