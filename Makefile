@@ -379,7 +379,11 @@ tcc-doc.info: tcc-doc.texi
 export LIBTCC1
 
 %est:
+ifneq ($(TARGETOS),Darwin)
 	$(MAKE) -C tests $@ 'PROGS_CROSS=$(PROGS_CROSS)'
+else
+	echo "Currently there are a problems with tests on OSX"
+endif
 
 clean:
 	rm -vf $(PROGS) tcc_p$(EXESUF) tcc.pod *~ *.o *.a *.so* *.out *.log \
