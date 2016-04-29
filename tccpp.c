@@ -3702,11 +3702,17 @@ static void macro_subst(
 
             /* if nested substitution, do nothing */
             s2 = sym_find2(*nested_list, t);
-            if (s2 && s2->c) {
-                /* and mark it as TOK_NOSUBST, so it doesn't get subst'd again */
-                tok_str_add2(tok_str, TOK_NOSUBST, NULL);
-                goto no_subst;
+            if (s2) {
+                if (s2->c || s->asm_label) {
+                    /* and mark it as TOK_NOSUBST, so it doesn't get subst'd again */
+                    s->asm_label = 0;
+                    tok_str_add2(tok_str, TOK_NOSUBST, NULL);
+                    goto no_subst;
+                }
+                s->asm_label++;
             }
+            else
+                s->asm_label = 0;
 
             {
                 TokenString str;
