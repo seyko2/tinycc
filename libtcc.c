@@ -1960,8 +1960,7 @@ static int tcc_set_linker(TCCState *s, const char *option)
         } else if (link_option(option, "flat_namespace", &p)) {
             ignoring = 1;
         } else if (link_option(option, "undefined", &p)) {
-            ignoring = 1;
-        } else if (link_option(option, "warning", &p)) {
+            p = skip_linker_arg(&p);
             ignoring = 1;
 /* */
         } else if (link_option(option, "O", &p)) {
