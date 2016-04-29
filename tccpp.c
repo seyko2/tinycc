@@ -1103,6 +1103,7 @@ ST_FUNC void restore_parse_state(ParseState *s)
     tokc = s->tokc;
 }
 
+#if 0
 /* return the number of additional 'ints' necessary to store the
    token */
 static inline int tok_size(const int *p)
@@ -1131,6 +1132,7 @@ static inline int tok_size(const int *p)
         return 1 + 0;
     }
 }
+#endif
 
 /* token string handling */
 
@@ -2879,7 +2881,7 @@ maybe_newline:
         } else {
             /* slower case */
             cstr_reset(&tokcstr);
-            cstr_cat(&tokcstr, p1, len);
+            cstr_cat(&tokcstr, (const char *)p1, len);
             p--;
             PEEKC(c, p);
         parse_ident_slow:
