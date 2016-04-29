@@ -3709,7 +3709,8 @@ static void macro_subst(
                     tok_str_add2(tok_str, TOK_NOSUBST, NULL);
                     goto no_subst;
                 }
-                s->asm_label++;
+                if (!s->r && s->type.t != MACRO_FUNC)
+                    s->asm_label++;
             }
             else
                 s->asm_label = 0;
