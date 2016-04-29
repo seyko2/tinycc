@@ -3544,18 +3544,6 @@ static int macro_subst_tok(
             }
         }
 
-        if (!recursive) {
-            if (macro_ptr) {
-                t = *macro_ptr;
-                if (t == '(')
-                    recursive = 1;
-            }
-            else {
-                ch = handle_eob();
-                if (ch == '(')
-                    recursive = 1;
-            }
-        }
         sym_push2(nested_list, s->v, 0, recursive);
         parse_flags = saved_parse_flags;
         macro_subst(tok_str, nested_list, mstr, can_read_stream);
@@ -3702,18 +3690,11 @@ static void macro_subst(
 
             /* if nested substitution, do nothing */
             s2 = sym_find2(*nested_list, t);
-            if (s2) {
-                if (s2->c || s->asm_label) {
-                    /* and mark it as TOK_NOSUBST, so it doesn't get subst'd again */
-                    s->asm_label = 0;
-                    tok_str_add2(tok_str, TOK_NOSUBST, NULL);
-                    goto no_subst;
-                }
-                if (!s->r && s->type.t != MACRO_FUNC)
-                    s->asm_label++;
+            if (s2 && (s2->c || s->asm_label)) {
+                /* and mark it as TOK_NOSUBST, so it doesn't get subst'd again */
+                tok_str_add2(tok_str, TOK_NOSUBST, NULL);
+                goto no_subst;
             }
-            else
-                s->asm_label = 0;
 
             {
                 TokenString str;
@@ -3776,7 +3757,7 @@ ST_FUNC void next(void)
         /* if reading from file, try to substitute macros */
         s = define_find(tok);
         if (s) {
-            s->asm_label = -1;
+            s->asm_label = 1;
             if (tcc_state->output_type == TCC_OUTPUT_PREPROCESS)
             {
                 int t = 0;
