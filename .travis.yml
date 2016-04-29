@@ -1,1 +1,14 @@
 language: c
+
+os:
+ - linux
+ - osx
+
+before_install:
+ - if [ `uname` = "Linux" ]; then
+      sudo apt-get update -qq -y;
+      sudo apt-get install -y texinfo;
+   elif [ `uname` = "Darwin" ]; then
+      brew update;
+      brew install texinfo;
+   fi
