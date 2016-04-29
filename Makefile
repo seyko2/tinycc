@@ -382,7 +382,8 @@ export LIBTCC1
 ifneq ($(TARGETOS),Darwin)
 	$(MAKE) -C tests $@ 'PROGS_CROSS=$(PROGS_CROSS)'
 else
-	echo "Currently there are a problems with tests on OSX"
+	@echo "Currently there are problems with tests on OSX"
+	@true
 endif
 
 clean:
