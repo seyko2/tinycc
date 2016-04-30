@@ -1429,7 +1429,7 @@ ST_FUNC void print_defines(void)
 }
 
 /* defines handling */
-ST_INLN void define_push_r(int v, int macro_type, TokenString *str, Sym *first_arg, int recursive)
+ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg)
 {
     Sym *s;
 
@@ -1443,12 +1443,6 @@ ST_INLN void define_push_r(int v, int macro_type, TokenString *str, Sym *first_a
     s->d = str ? tok_str_dup(str) : NULL;
     s->next = first_arg;
     table_ident[v - TOK_IDENT]->sym_define = s;
-    s->r = recursive;
-}
-
-ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg)
-{
-    define_push_r(v, macro_type, str, first_arg, 1);
 }
 
 #ifdef CONFIG_TCC_EXSYMTAB
@@ -1616,7 +1610,6 @@ ST_FUNC void parse_define(void)
     Sym *s, *first, **ps;
     int v, t, varg, is_vaargs, spc;
     int saved_parse_flags = parse_flags;
-    int recursive;
 
     v = tok;
     if (v < TOK_IDENT)
@@ -1626,8 +1619,6 @@ ST_FUNC void parse_define(void)
     t = MACRO_OBJ;
     /* '(' must be just after macro definition for MACRO_FUNC */
     parse_flags |= PARSE_FLAG_SPACES;
-    recursive = 0;
-
     next_nomacro_spc();
     if (tok == '(') {
         /* must be able to parse TOK_DOTS (in asm mode '.' can be part of identifier) */
@@ -1682,8 +1673,6 @@ ST_FUNC void parse_define(void)
             goto skip;
         }
         tok_str_add2(&tokstr_buf, tok, &tokc);
-        if (tok == v)
-            recursive++;
     skip:
         next_nomacro_spc();
     }
@@ -1695,7 +1684,7 @@ ST_FUNC void parse_define(void)
     if (3 == spc)
 bad_twosharp:
         tcc_error("'##' cannot appear at either end of macro");
-    define_push_r(v, t, &tokstr_buf, first, recursive);
+    define_push(v, t, &tokstr_buf, first);
     define_print(v);
 }
 
@@ -3403,10 +3392,7 @@ static int macro_subst_tok(
     CValue cval;
     CString cstr;
     char buf[32];
-    int recursive;
-
-    recursive = s->r;
-
+    
     /* if symbol is a macro, prepare substitution */
     /* special macros */
     if (tok == TOK___LINE__) {
@@ -3503,11 +3489,8 @@ static int macro_subst_tok(
                         parlevel--;
                     if (tok == TOK_LINEFEED)
                         tok = ' ';
-                    if (!check_space(tok, &spc)) {
+                    if (!check_space(tok, &spc))
                         tok_str_add2(&str, tok, &tokc);
-                        if (tok == s->v)
-                            recursive = 1;
-                    }
                     next_argstream(nested_list, can_read_stream, NULL);
                 }
                 if (parlevel)
@@ -3546,7 +3529,7 @@ static int macro_subst_tok(
             }
         }
 
-        sym_push2(nested_list, s->v, 0, recursive);
+        sym_push2(nested_list, s->v, 0, 0);
         parse_flags = saved_parse_flags;
         macro_subst(tok_str, nested_list, mstr, can_read_stream);
 
@@ -3684,15 +3667,12 @@ static void macro_subst(
             break;
 
         if (t >= TOK_IDENT && 0 == nosubst) {
-            Sym *s2;
-
             s = define_find(t);
             if (s == NULL)
                 goto no_subst;
 
             /* if nested substitution, do nothing */
-            s2 = sym_find2(*nested_list, t);
-            if (s2 && (s2->c || s->asm_label)) {
+            if (sym_find2(*nested_list, t)) {
                 /* and mark it as TOK_NOSUBST, so it doesn't get subst'd again */
                 tok_str_add2(tok_str, TOK_NOSUBST, NULL);
                 goto no_subst;
@@ -3759,7 +3739,6 @@ ST_FUNC void next(void)
         /* if reading from file, try to substitute macros */
         s = define_find(tok);
         if (s) {
-            s->asm_label = 1;
             if (tcc_state->output_type == TCC_OUTPUT_PREPROCESS)
             {
                 int t = 0;
