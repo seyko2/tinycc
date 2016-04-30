@@ -2771,7 +2771,7 @@ maybe_newline:
             if (tcc_state->symtab_name_callback) {
                 extended_symtab* containing_symtab;
                 TokenSym * extended_ts = tcc_state->symtab_name_callback(
-                        p1, len, tcc_state->symtab_callback_data, &containing_symtab);
+                        (char *)p1, len, tcc_state->symtab_callback_data, &containing_symtab);
                 if (extended_ts) {
                     local_stack_off(); /* backup */
                     copy_extended_tokensym(containing_symtab, extended_ts, ts);

@@ -469,12 +469,12 @@ void dump_sym_names(TCCState *state)
     s = state->symtab;
     sym_index = 2;
     sym = &((ElfW(Sym) *)s->data)[sym_index];
-    name = s->link->data + sym->st_name;
+    name = (char *) s->link->data + sym->st_name;
     while (strcmp("_etext", name) != 0) {
         printf("%s: sym_index = %d, st_shndx is %x, address is %p\n", name, sym_index, sym->st_shndx, (void*)sym->st_value);
         sym_index++;
         sym = &((ElfW(Sym) *)s->data)[sym_index];
-        name = s->link->data + sym->st_name;
+        name = (char *) s->link->data + sym->st_name;
     }
 }
 
@@ -548,7 +548,7 @@ void copy_extended_symbols_to_exsymtab(TCCState *state)
     s = state->symtab;
     sym_index = 2;
     sym = &((ElfW(Sym) *)s->data)[sym_index];
-    name = s->link->data + sym->st_name;
+    name = (char *) s->link->data + sym->st_name;
     while (strcmp("_etext", name) != 0) {
         if (name[0] == 'L' && name[1] == '.') {
             /* Skip constants */
@@ -567,7 +567,7 @@ void copy_extended_symbols_to_exsymtab(TCCState *state)
         /* Next iteration */
         sym_index++;
         sym = &((ElfW(Sym) *)s->data)[sym_index];
-        name = s->link->data + sym->st_name;
+        name = (char *) s->link->data + sym->st_name;
     }
 }
 
