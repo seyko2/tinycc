@@ -13,6 +13,15 @@ not considered as right or needed for general purpose by people
 in tcc-devel mail list. A synchronization with [mob] repository
 is performed manually.
 
+Other usefull branches:
+
+https://github.com/tinycc/tinycc
+    a mirror of the [mob]  http://repo.or.cz/w/tinycc.git
+
+https://github.com/run4flat/tinycc
+    exsymtab patch/extension main source
+
+
 ### License
 
 Tiny C Compiler project is licensed under
