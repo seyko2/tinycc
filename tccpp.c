@@ -445,35 +445,6 @@ ST_FUNC TokenSym *tok_alloc(const char *str, int len)
     return tok_alloc_new(pts, str, len);
 }
 
-#ifdef CONFIG_TCC_EXSYMTAB
-/* Almost identical to above: Returns a pointer to the hash_next which either
- * points to the token (if found) or points to null. If the dereferenced value
- * is null, then this pointer itself can be passed to tok_alloc_new; if the
- * dereferenced value is not null, it is already present and ready for use. */
-ST_FUNC TokenSym** symtab_tok_find(const char *str, int len)
-{
-    TokenSym *ts, **pts;
-    int i;
-    unsigned int h;
-
-    TOK_HASH_INIT(h);
-    for(i=0;i<len;i++)
-        TOK_HASH_FUNC(h,((unsigned char *)str)[i]);
-    TOK_HASH_FINISH(h);
-    h &= (TOK_HASH_SIZE - 1);
-
-    pts = &hash_ident[h];
-    for(;;) {
-        ts = *pts;
-        if (!ts)
-            break;
-        if (ts->len == len && !memcmp(ts->str, str, len))
-            return pts;
-        pts = &(ts->hash_next);
-    }
-    return pts;
-}
-#endif
 
 /* XXX: buffer overflow */
 /* XXX: float tokens */
@@ -1445,21 +1416,6 @@ ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg
     table_ident[v - TOK_IDENT]->sym_define = s;
 }
 
-#ifdef CONFIG_TCC_EXSYMTAB
-ST_INLN void define_push_old(int v, int macro_type, int *str, Sym *first_arg)
-{
-    Sym *s;
-
-    s = define_find(v);
-    if (s && !macro_is_equal(s->d, str))
-        tcc_warning("%s redefined", get_tok_str(v, NULL));
-
-    s = sym_push2(&define_stack, v, macro_type, 0);
-    s->d = str;
-    s->next = first_arg;
-    table_ident[v - TOK_IDENT]->sym_define = s;
-}
-#endif
 
 /* undefine a define symbol. Its name is just set to zero */
 ST_FUNC void define_undef(Sym *s)
@@ -2622,49 +2578,6 @@ static void parse_number(const char *p)
         tcc_error("invalid number\n");
 }
 
-#ifdef CONFIG_TCC_EXSYMTAB
-/* MUST NEVER RETURN NULL (or if it does, call sites must be updated to handle that) */
-TokenSym * get_local_ts_for_extended_ts(TokenSym* orig_symtab_ts, extended_symtab* orig_symtab) {
-       /* Look up the original tokensym in the extended symbol and see if an
-        * identically named symbol is already present in the current compiling
-        * context's symbol table. */
-       TokenSym **local_pts, *local_ts;
-       local_pts = symtab_tok_find(orig_symtab_ts->str, orig_symtab_ts->len);
-       local_ts = *local_pts;
-
-       /* If not, find it in the extended symbol table. Notice that I perform
-        * another search by name, rather than simply using curr_from, since the
-        * extended symbol table manager might consider this to be overridden.
-        * Fallback to original (and warn) if we get nothing. */
-       if (local_ts == NULL) {
-               extended_symtab * highest_precedent_symtab;
-               TokenSym* highest_precedent_ts;
-               highest_precedent_ts = tcc_state->symtab_name_callback(
-                       orig_symtab_ts->str, orig_symtab_ts->len,
-                       tcc_state->symtab_callback_data, &highest_precedent_symtab);
-
-               /* Shouldn't happen, but use orig_symtab_ts if we get nothing */
-               if (highest_precedent_ts == NULL) {
-                       /* Issue a warning, though */
-                       char symbol_name[1024];
-                       strncpy(symbol_name, orig_symtab_ts->str,
-                               orig_symtab_ts->len < 1024 ? orig_symtab_ts->len : 1024);
-                        symbol_name[1023] = '\0';
-                       tcc_warning("Internal inconsistency: could not find extended symbol table entry for %s; defaulting to previous value",
-                               symbol_name);
-
-                       highest_precedent_ts = orig_symtab_ts;
-                       highest_precedent_symtab = orig_symtab;
-               }
-               /* Allocate new TokenSym and copy it over. */
-               local_ts = tok_alloc_new(local_pts, highest_precedent_ts->str,
-                       highest_precedent_ts->len);
-               copy_extended_tokensym(highest_precedent_symtab, highest_precedent_ts,
-                       local_ts);
-       }
-       return local_ts;
-}
-#endif
 
 #define PARSE2(c1, tok1, c2, tok2)              \
     case c1:                                    \
@@ -4001,3 +3914,89 @@ ST_FUNC char *trimback(char *a, char *e)
     *e = 0;;
     return a;
 }
+
+#ifdef CONFIG_TCC_EXSYMTAB
+/* Almost identical to above: Returns a pointer to the hash_next which either
+ * points to the token (if found) or points to null. If the dereferenced value
+ * is null, then this pointer itself can be passed to tok_alloc_new; if the
+ * dereferenced value is not null, it is already present and ready for use. */
+ST_FUNC TokenSym** symtab_tok_find(const char *str, int len)
+{
+    TokenSym *ts, **pts;
+    int i;
+    unsigned int h;
+
+    TOK_HASH_INIT(h);
+    for(i=0;i<len;i++)
+        TOK_HASH_FUNC(h,((unsigned char *)str)[i]);
+    TOK_HASH_FINISH(h);
+    h &= (TOK_HASH_SIZE - 1);
+
+    pts = &hash_ident[h];
+    for(;;) {
+        ts = *pts;
+        if (!ts)
+            break;
+        if (ts->len == len && !memcmp(ts->str, str, len))
+            return pts;
+        pts = &(ts->hash_next);
+    }
+    return pts;
+}
+
+ST_INLN void define_push_old(int v, int macro_type, int *str, Sym *first_arg)
+{
+    Sym *s;
+
+    s = define_find(v);
+    if (s && !macro_is_equal(s->d, str))
+        tcc_warning("%s redefined", get_tok_str(v, NULL));
+
+    s = sym_push2(&define_stack, v, macro_type, 0);
+    s->d = str;
+    s->next = first_arg;
+    table_ident[v - TOK_IDENT]->sym_define = s;
+}
+
+/* MUST NEVER RETURN NULL (or if it does, call sites must be updated to handle that) */
+TokenSym * get_local_ts_for_extended_ts(TokenSym* orig_symtab_ts, extended_symtab* orig_symtab) {
+       /* Look up the original tokensym in the extended symbol and see if an
+        * identically named symbol is already present in the current compiling
+        * context's symbol table. */
+       TokenSym **local_pts, *local_ts;
+       local_pts = symtab_tok_find(orig_symtab_ts->str, orig_symtab_ts->len);
+       local_ts = *local_pts;
+
+       /* If not, find it in the extended symbol table. Notice that I perform
+        * another search by name, rather than simply using curr_from, since the
+        * extended symbol table manager might consider this to be overridden.
+        * Fallback to original (and warn) if we get nothing. */
+       if (local_ts == NULL) {
+               extended_symtab * highest_precedent_symtab;
+               TokenSym* highest_precedent_ts;
+               highest_precedent_ts = tcc_state->symtab_name_callback(
+                       orig_symtab_ts->str, orig_symtab_ts->len,
+                       tcc_state->symtab_callback_data, &highest_precedent_symtab);
+
+               /* Shouldn't happen, but use orig_symtab_ts if we get nothing */
+               if (highest_precedent_ts == NULL) {
+                       /* Issue a warning, though */
+                       char symbol_name[1024];
+                       strncpy(symbol_name, orig_symtab_ts->str,
+                               orig_symtab_ts->len < 1024 ? orig_symtab_ts->len : 1024);
+                        symbol_name[1023] = '\0';
+                       tcc_warning("Internal inconsistency: could not find extended symbol table entry for %s; defaulting to previous value",
+                               symbol_name);
+
+                       highest_precedent_ts = orig_symtab_ts;
+                       highest_precedent_symtab = orig_symtab;
+               }
+               /* Allocate new TokenSym and copy it over. */
+               local_ts = tok_alloc_new(local_pts, highest_precedent_ts->str,
+                       highest_precedent_ts->len);
+               copy_extended_tokensym(highest_precedent_symtab, highest_precedent_ts,
+                       local_ts);
+       }
+       return local_ts;
+}
+#endif
