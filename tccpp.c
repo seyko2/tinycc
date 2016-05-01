@@ -2590,8 +2590,6 @@ static void parse_number(const char *p)
         }                                       \
         break;
 
-// #define NEW_PPNUM_CODE
-
 /* return next token without macro substitution */
 static inline void next_nomacro1(void)
 {
@@ -2599,10 +2597,7 @@ static inline void next_nomacro1(void)
     TokenSym *ts;
     uint8_t *p, *p1;
     unsigned int h;
-
-#ifdef NEW_PPNUM_CODE
     int is_dec;
-#endif
 
     p = file->buf_ptr;
  redo_no_start:
@@ -2814,8 +2809,6 @@ maybe_newline:
         }
         break;
 
-#ifdef NEW_PPNUM_CODE
-// may be needed for *.S files
     case '0':
         t = c;
         cstr_reset(&tokcstr);
@@ -2836,13 +2829,22 @@ maybe_newline:
         PEEKC(c, p);
     parse_num:
         for(;;) {
-            if (!((isidnum_table[c - CH_EOF] & (IS_ID|IS_NUM))
-                   || (c == '.')
-                   || ((c == '+' || c == '-')
-                        && (((t == 'e' || t == 'E') && is_dec) ||
-                            ((t == 'p' || t == 'P') && !is_dec)))
+            if (parse_flags & PARSE_FLAG_ASM_FILE) {
+                if (!((isidnum_table[c - CH_EOF] & (IS_ID|IS_NUM))
+                       || (c == '.')
+                       || ((c == '+' || c == '-')
+                            && (((t == 'e' || t == 'E') && is_dec) ||
+                                ((t == 'p' || t == 'P') && !is_dec)))
                 ))
                 break;
+            } else
+                if (!((isidnum_table[c - CH_EOF] & (IS_ID|IS_NUM))
+                       || c == '.'
+                       || ((c == '+' || c == '-')
+                            && (t == 'e' || t == 'E' || t == 'p' || t == 'P')
+                )))
+                break;
+
             t = c;
             cstr_ccat(&tokcstr, c);
             PEEKC(c, p);
@@ -2864,41 +2866,6 @@ maybe_newline:
             cstr_reset(&tokcstr);
             cstr_ccat(&tokcstr, '.');
             goto parse_num;
-#else
-    case '0': case '1': case '2': case '3':
-    case '4': case '5': case '6': case '7':
-    case '8': case '9':
-        cstr_reset(&tokcstr);
-        /* after the first digit, accept digits, alpha, '.' or sign if
-           prefixed by 'eEpP' */
-    parse_num:
-        for(;;) {
-            t = c;
-            cstr_ccat(&tokcstr, c);
-            PEEKC(c, p);
-            if (!((isidnum_table[c - CH_EOF] & (IS_ID|IS_NUM))
-                  || c == '.'
-                  || ((c == '+' || c == '-')
-                      && (t == 'e' || t == 'E' || t == 'p' || t == 'P')
-                      )))
-                break;
-        }
-        /* We add a trailing '\0' to ease parsing */
-        cstr_ccat(&tokcstr, '\0');
-        tokc.str.size = tokcstr.size;
-        tokc.str.data = tokcstr.data;
-        tokc.str.data_allocated = tokcstr.data_allocated;
-        tok = TOK_PPNUM;
-        break;
-
-    case '.':
-        /* special dot handling because it can also start a number */
-        PEEKC(c, p);
-        if (isnum(c)) {
-            cstr_reset(&tokcstr);
-            cstr_ccat(&tokcstr, '.');
-            goto parse_num;
-#endif
         } else if ((parse_flags & PARSE_FLAG_ASM_FILE)
                    && (isidnum_table[c - CH_EOF] & (IS_ID|IS_NUM))) {
             *--p = c = '.';
