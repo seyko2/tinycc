@@ -1227,6 +1227,26 @@ ST_FUNC int gvtst(int inv, int t)
     return gtst(inv, t);
 }
 
+/* gvtst() modified for nocode_if_false */
+ST_FUNC int gvtst_nocode(int inv, int t)
+{
+    int v = vtop->r & VT_VALMASK;
+    if (v != VT_CMP && v != VT_JMP && v != VT_JMPI) {
+        vpushi(0);
+        gen_op(TOK_NE);
+    }
+    if ((vtop->r & (VT_VALMASK | VT_LVAL | VT_SYM)) == VT_CONST) {
+        /* constant jmp optimization */
+        if ((vtop->c.i != 0) != inv) {
+            t = gjmp(t);
+            nocode_wanted = 1;
+        }
+        vtop--;
+        return t;
+    }
+    return gtst(inv, t);
+}
+
 #if !defined(TCC_TARGET_ARM64) && !defined(TCC_TARGET_X86_64)
 /* generate CPU independent (unsigned) long long operations */
 static void gen_opl(int op)
@@ -4993,8 +5013,15 @@ static void block(int *bsym, int *csym, int *case_sym, int *def_sym,
         skip('(');
         gexpr();
         skip(')');
-        a = gvtst(1, 0);
-        block(bsym, csym, case_sym, def_sym, case_reg, 0);
+        if (!tcc_state->nocode_if_false) {
+            a = gvtst(1, 0);
+            block(bsym, csym, case_sym, def_sym, case_reg, 0);
+        } else {
+            int saved_nocode_wanted = nocode_wanted;
+            a = gvtst_nocode(1, 0);
+            block(bsym, csym, case_sym, def_sym, case_reg, 0);
+            nocode_wanted = saved_nocode_wanted;
+        }
         c = tok;
         if (c == TOK_ELSE) {
             next();
