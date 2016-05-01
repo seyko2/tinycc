@@ -5016,31 +5016,21 @@ static void block(int *bsym, int *csym, int *case_sym, int *def_sym,
         if (!tcc_state->nocode_if_false) {
             a = gvtst(1, 0);
             block(bsym, csym, case_sym, def_sym, case_reg, 0);
-            c = tok;
-            if (c == TOK_ELSE) {
-                next();
-                d = gjmp(0);
-                gsym(a);
-                block(bsym, csym, case_sym, def_sym, case_reg, 0);
-                gsym(d); /* patch else jmp */
-            } else
-                gsym(a);
         } else {
             int saved_nocode_wanted = nocode_wanted;
             a = gvtst_nocode(1, 0);
             block(bsym, csym, case_sym, def_sym, case_reg, 0);
-            c = tok;
-            nocode_wanted = !nocode_wanted;
-            if (c == TOK_ELSE) {
-                next();
-                d = gjmp(0);
-                gsym(a);
-                block(bsym, csym, case_sym, def_sym, case_reg, 0);
-                gsym(d); /* patch else jmp */
-            } else
-                gsym(a);
             nocode_wanted = saved_nocode_wanted;
         }
+        c = tok;
+        if (c == TOK_ELSE) {
+            next();
+            d = gjmp(0);
+            gsym(a);
+            block(bsym, csym, case_sym, def_sym, case_reg, 0);
+            gsym(d); /* patch else jmp */
+        } else
+            gsym(a);
     } else if (tok == TOK_WHILE) {
         next();
         d = ind;
