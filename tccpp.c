@@ -3658,6 +3658,17 @@ ST_FUNC void next(void)
                 Sym *nested_list = NULL;
                 tokstr_buf2.len = 0;
                 macro_subst_tok(&tokstr_buf2, &nested_list, s, 1);
+                next_nomacro_spc();
+                if (tok >= TOK_IDENT) {
+                    s = define_find(tok);
+                    if (s) {
+                        nested_list = NULL;
+                        macro_subst_tok(&tokstr_buf2, &nested_list, s, 1);
+                    } else
+                        tok_str_add_tok(&tokstr_buf2);
+                } else
+                    tok_str_add_tok(&tokstr_buf2);
+
                 {
                     const int *str  = tokstr_buf2.str;
                     const int *str1 = tokstr_buf2.str + tokstr_buf2.len;
@@ -3666,43 +3677,18 @@ ST_FUNC void next(void)
 
                     tokstr_buf.len = 0;
                     while (str < str1) {
-                        t = tok;
+                        if (tok != TOK_LINENUM)
+                            t = tok;
                         TOK_GET(&tok, &str, &cval);
                         if ((t == TOK_PPNUM) && ((tok == '+') || (tok == '-'))) {
                             tok_str_add(&tokstr_buf, ' ');
-                        }
-                        tok_str_add2(&tokstr_buf, tok, &cval);
-                    }
-                    t = tok;
-                }
-                if (t == TOK_PPNUM) {
-                    if (macro_ptr) {
-                        t = *macro_ptr;
-                        if ((t == '+') || (t == '-'))
+                            tok_str_add2(&tokstr_buf, tok, &cval);
+                        } else
+                        if ((t == TOK_INC || (t == TOK_DEC)) && ((tok == '+') || (tok == '-'))) {
+                            tok_str_add(&tokstr_buf, tok);
                             tok_str_add(&tokstr_buf, ' ');
-                    }
-                    else {
-                        ch = handle_eob();
-                        if ((ch == '+') || (ch == '-'))
-                            tok_str_add(&tokstr_buf, ' ');
-                    }
-                } else
-                if (t == TOK_INC) {
-                    if (macro_ptr) {
-                        t = *macro_ptr;
-                        if (t == '+') {
-                            tok_str_add(&tokstr_buf, '+');
-                            tok_str_add(&tokstr_buf, ' ');
-                            macro_ptr++;
-                        }
-                    }
-                    else {
-                        ch = handle_eob();
-                        if (ch == '+') {
-                            tok_str_add(&tokstr_buf, '+');
-                            tok_str_add(&tokstr_buf, ' ');
-                            file->buf_ptr++;
-                        }
+                        } else
+                            tok_str_add2(&tokstr_buf, tok, &cval);
                     }
                 }
             }
