@@ -718,6 +718,7 @@ struct TCCState {
     int dollars_in_identifiers;	/* allows '$' char in indentifiers */
     int normalize_inc_dirs;	/* remove non-existent or duplicate directories from include paths */
     int nocode_if_false;        /* no code generation for "if (0) {CODE}" */
+    int no_type_redef_check;    /* no local vars redefinition check */
 
     /* warning switches */
     int warn_write_strings;
