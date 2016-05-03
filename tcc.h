@@ -649,6 +649,7 @@ typedef struct ParseArgsState
     int run;
     int pthread;
     int filetype;
+    int binary_type;
     CString linker_arg; /* collect -Wl options for input such as "-Wl,-rpath -Wl,<path>" */
 } ParseArgsState;
 
@@ -1461,7 +1462,7 @@ ST_FUNC void relocate_plt(TCCState *s1);
 
 ST_FUNC void tcc_add_linker_symbols(TCCState *s1);
 ST_FUNC int tcc_load_object_file(TCCState *s1, int fd, unsigned long file_offset);
-ST_FUNC int tcc_load_archive(TCCState *s1, int fd);
+ST_FUNC int tcc_load_archive(TCCState *s1, int fd, int whole_archive);
 ST_FUNC void tcc_add_bcheck(TCCState *s1);
 
 ST_FUNC void build_got_entries(TCCState *s1);
