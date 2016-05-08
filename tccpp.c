@@ -3688,7 +3688,8 @@ static void define_print(TCCState *s1, int v)
         return;
 
     fp = s1->ppfp;
-    fprintf(fp, "#define %s", get_tok_str(v, NULL));
+    fprintf(fp, "%s#define %s", s1->dflag==3 ? "// " : "",
+	get_tok_str(v, NULL));
     if (s->type.t == MACRO_FUNC) {
         Sym *a = s->next;
         fprintf(fp,"(");
