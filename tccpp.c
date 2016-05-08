@@ -1363,7 +1363,8 @@ static void define_print(int v)
     if (define_print_prepared(s) == 0)
         return;
 
-    fprintf(pr, "// #define %s", get_tok_str(v, NULL));
+    fprintf(pr, "%s#define %s", tcc_state->dflag=='D'? "// " : "",
+	get_tok_str(v, NULL));
     if (s->type.t == MACRO_FUNC) {
         a = s->next;
         fprintf(pr,"(");
