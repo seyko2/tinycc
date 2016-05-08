@@ -1179,14 +1179,18 @@ LIBTCCAPI TCCState *tcc_new(void)
     tcc_define_symbol(s, "__linux", NULL);
 # endif
 # if defined(__FreeBSD__)
-    tcc_define_symbol(s, "__FreeBSD__", "__FreeBSD__");
+#  define str(s) #s
+    tcc_define_symbol(s, "__FreeBSD__", str( __FreeBSD__));
+#  undef str
 # endif
 # if defined(__FreeBSD_kernel__)
     tcc_define_symbol(s, "__FreeBSD_kernel__", NULL);
 # endif
 #endif
 # if defined(__NetBSD__)
-    tcc_define_symbol(s, "__NetBSD__", "__NetBSD__");
+#  define str(s) #s
+    tcc_define_symbol(s, "__NetBSD__", str( __NetBSD__));
+#  undef str
 # endif
 
     /* TinyCC & gcc defines */
@@ -1283,6 +1287,8 @@ LIBTCCAPI void tcc_delete(TCCState *s1)
     /* close a preprocessor output */
     if (s1->ppfp && s1->ppfp != stdout)
         fclose(s1->ppfp);
+    if (s1->dffp && s1->dffp != s1->ppfp)
+        fclose(s1->dffp);
 
 #ifdef CONFIG_TCC_EXSYMTAB
     /* Clean up the extended symbol table if it was never copied. */
@@ -1679,7 +1685,12 @@ LIBTCCAPI int tcc_set_output_type(TCCState *s, int output_type)
             if (!s->ppfp)
                 tcc_error("could not write '%s'", s->outfile);
         }
+        s->dffp = s->ppfp;
+        if (s->dflag == 'M')
+            s->ppfp = NULL;
     }
+    if (s->option_C && !s->ppfp)
+        s->option_C = 0;
 
     if (!s->nostdinc) {
         /* default include paths */
@@ -1730,6 +1741,7 @@ LIBTCCAPI int tcc_set_output_type(TCCState *s, int output_type)
         tcc_add_crt(s, "crti.o");
     }
 #endif
+
 #ifdef CONFIG_TCC_BCHECK
     if (s->do_bounds_check && (output_type == TCC_OUTPUT_EXE))
     {
@@ -1740,8 +1752,12 @@ LIBTCCAPI int tcc_set_output_type(TCCState *s, int output_type)
             put_extern_sym(sym, NULL, 0, 0);
     }
 #endif
+
     if (s->normalize_inc_dirs)
         tcc_normalize_inc_dirs(s);
+    if (s->output_type == TCC_OUTPUT_PREPROCESS)
+        print_defines();
+
     return 0;
 }
 
@@ -2026,6 +2042,7 @@ enum {
     TCC_OPTION_b,
     TCC_OPTION_g,
     TCC_OPTION_c,
+    TCC_OPTION_C,
     TCC_OPTION_dumpversion,
 #ifdef CONFIG_TCC_EXSYMTAB
     TCC_OPTION_dump_identifier_names,
@@ -2089,6 +2106,7 @@ static const TCCOption tcc_options[] = {
 #endif
     { "g", TCC_OPTION_g, TCC_OPTION_HAS_ARG | TCC_OPTION_NOSEP },
     { "c", TCC_OPTION_c, 0 },
+    { "C", TCC_OPTION_C, 0 },
     { "dumpversion", TCC_OPTION_dumpversion, 0},
 #ifdef CONFIG_TCC_EXSYMTAB
     { "dump-identifier-names", TCC_OPTION_dump_identifier_names, TCC_OPTION_HAS_ARG },
@@ -2283,15 +2301,17 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
                 tcc_warning("-c: some compiler action already specified (%d)", s->output_type);
             s->output_type = TCC_OUTPUT_OBJ;
             break;
+        case TCC_OPTION_C:
+            s->option_C = 1;
+            break;
         case TCC_OPTION_d:
-            if (*optarg == 'D')
-                s->dflag = 3;
-            else if (*optarg == 'M')
-                s->dflag = 7;
-            else if (*optarg == 'b')
-                s->dflag = 8;
-            else
-                goto unsupported_option;
+            if (*optarg == 'D' || *optarg == 'M')
+                s->dflag = *optarg;
+            else {
+                if (s->warn_unsupported)
+                    goto unsupported_option;
+                tcc_error("invalid option -- '%s'", r);
+            }
             break;
 #ifdef TCC_TARGET_ARM
         case TCC_OPTION_float_abi:
@@ -2381,11 +2401,12 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
             do ++s->verbose; while (*optarg++ == 'v');
             break;
         case TCC_OPTION_f:
-            if (tcc_set_flag(s, optarg, 1) < 0)
+            if (tcc_set_flag(s, optarg, 1) < 0 && s->warn_unsupported)
                 goto unsupported_option;
             break;
         case TCC_OPTION_W:
-            if (tcc_set_warning(s, optarg, 1) < 0)
+            if (tcc_set_warning(s, optarg, 1) < 0 &&
+                s->warn_unsupported)
                 goto unsupported_option;
             break;
         case TCC_OPTION_w:
@@ -2468,9 +2489,10 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
             /* ignored */
             break;
         default:
-unsupported_option:
-            if (s->warn_unsupported)
+            if (s->warn_unsupported) {
+            unsupported_option:
                 tcc_warning("unsupported option '%s'", r);
+            }
             break;
         }
     }
