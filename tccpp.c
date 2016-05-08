@@ -3725,13 +3725,60 @@ ST_FUNC void preprocess_delete(void)
     cstr_alloc = NULL;
 }
 
+static int need_space(int prev_tok, int tok, const char *tokstr)
+{
+    const char *sp_chars = "";
+    if ((prev_tok >= TOK_IDENT || prev_tok == TOK_PPNUM) &&
+        (tok >= TOK_IDENT || tok == TOK_PPNUM))
+        return 1;
+    switch (prev_tok) {
+    case '+':
+        sp_chars = "+=";
+        break;
+    case '-':
+        sp_chars = "-=>";
+        break;
+    case '*':
+    case '/':
+    case '%':
+    case '^':
+    case '=':
+    case '!':
+    case TOK_A_SHL:
+    case TOK_A_SAR:
+        sp_chars = "=";
+        break;
+    case '&':
+        sp_chars = "&=";
+        break;
+    case '|':
+        sp_chars = "|=";
+        break;
+    case '<':
+        sp_chars = "<=";
+        break;
+    case '>':
+        sp_chars = ">=";
+        break;
+    case '.':
+        sp_chars = ".";
+        break;
+    case '#':
+        sp_chars = "#";
+        break;
+    case TOK_PPNUM:
+        sp_chars = "+-";
+        break;
+    }
+    return !!strchr(sp_chars, tokstr[0]);
+}
+
 /* Preprocess the current file */
 ST_FUNC int tcc_preprocess(TCCState *s1)
 {
     BufferedFile **iptr;
     int token_seen, spcs, level;
-    const char *sp_chars = ""; /* insert space before any of these */
-    int prev_tok = 0;
+    const char *tokstr;
 
     preprocess_init(s1);
     ch = file->buf_ptr[0];
@@ -3744,10 +3791,11 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
                 ;
 
 #ifdef PP_BENCH
+    /* for PP benchmarks */
     do next(); while (tok != TOK_EOF); return 0;
 #endif
 
-    token_seen = spcs = 0;
+    token_seen = TOK_LINEFEED; spcs = 0;
     pp_line(s1, file, 0);
 
     for (;;) {
@@ -3762,7 +3810,7 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
             pp_line(s1, file, level);
         }
 
-        if (0 == token_seen) {
+        if (token_seen == TOK_LINEFEED) {
             if (tok == ' ') {
                 ++spcs;
                 continue;
@@ -3772,66 +3820,19 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
                 continue;
             }
             pp_line(s1, file, 0);
-            while (s1->ppfp && spcs > 0)
-                fputs(" ", s1->ppfp), --spcs;
-            spcs = 0;
-            token_seen = 1;
-
         } else if (tok == TOK_LINEFEED) {
             ++file->line_ref;
-            token_seen = 0;
         }
+        tokstr = get_tok_str(tok, &tokc);
+        if (!spcs && need_space(token_seen, tok, tokstr))
+            ++spcs;
         if (s1->ppfp) {
-            const char *t = get_tok_str(tok, &tokc);
-            if (strchr(sp_chars, t[0]) ||
-                ((tok >= TOK_IDENT || tok == TOK_PPNUM) &&
-                 (prev_tok >= TOK_IDENT || prev_tok == TOK_PPNUM)))
-                fputs(" ", s1->ppfp);
-            fputs(t, s1->ppfp);
-            prev_tok = tok;
-            switch (tok) {
-            case '+':
-                sp_chars = "+=";
-                break;
-            case '-':
-                sp_chars = "-=>";
-                break;
-            case '*':
-            case '/':
-            case '%':
-            case '^':
-            case '=':
-            case '!':
-            case TOK_A_SHL:
-            case TOK_A_SAR:
-                sp_chars = "=";
-                break;
-            case '&':
-                sp_chars = "&=";
-                break;
-            case '|':
-                sp_chars = "|=";
-                break;
-            case '<':
-                sp_chars = "<=";
-                break;
-            case '>':
-                sp_chars = ">=";
-                break;
-            case '.':
-                sp_chars = ".";
-                break;
-            case '#':
-                sp_chars = "#";
-                break;
-            case TOK_PPNUM:
-                sp_chars = "+-";
-                break;
-            default:
-                sp_chars = "";
-                break;
-            }
+            while (spcs > 0)
+                fputs(" ", s1->ppfp), --spcs;
+            fputs(tokstr, s1->ppfp);
         }
+        token_seen = tok;
+        spcs = 0;
     }
 
     return 0;
