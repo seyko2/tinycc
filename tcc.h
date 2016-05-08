@@ -461,7 +461,10 @@ typedef struct AttributeDef {
 /* symbol management */
 typedef struct Sym {
     int v;    /* symbol token */
-    int asm_label;    /* associated asm label */
+    union {
+        int asm_label;    /* associated asm label */
+        int scope;  /* scope level for locals */
+    };
     union {
         long r;    /* associated register */
         struct Attribute a;
