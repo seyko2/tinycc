@@ -1307,6 +1307,10 @@ static int macro_is_equal(const int *a, const int *b)
 {
     CValue cv;
     int t;
+
+    if (!a || !b)
+        return 1;
+
     while (*a && *b) {
         cstr_reset(&cstr_mbuf);
         TOK_GET(&t, &a, &cv);
@@ -1402,18 +1406,16 @@ ST_FUNC void print_defines(void)
 /* defines handling */
 ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg)
 {
-    Sym *s;
-
-    if (str) {
-        s = define_find(v);
-        if (s && !macro_is_equal(s->d, str->str))
-            tcc_warning("%s redefined", get_tok_str(v, NULL));
-    }
-
+    Sym *s, *o;
+ 
+    o = define_find(v);
     s = sym_push2(&define_stack, v, macro_type, 0);
     s->d = str ? tok_str_dup(str) : NULL;
     s->next = first_arg;
     table_ident[v - TOK_IDENT]->sym_define = s;
+
+    if (o && !macro_is_equal(o->d, s->d))
+	tcc_warning("%s redefined", get_tok_str(v, NULL));
 }
 
 
@@ -3679,7 +3681,7 @@ ST_FUNC void preprocess_init(TCCState *s1)
     s1->pack_stack_ptr = s1->pack_stack;
 
     isidnum_table['$' - CH_EOF] =
-        tcc_state->dollars_in_identifiers ? IS_ID : 0;
+        s1->dollars_in_identifiers ? IS_ID : 0;
 
     isidnum_table['.' - CH_EOF] =
         (parse_flags & PARSE_FLAG_ASM_FILE) ? IS_ID : 0;

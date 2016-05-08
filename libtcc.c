@@ -1179,18 +1179,14 @@ LIBTCCAPI TCCState *tcc_new(void)
     tcc_define_symbol(s, "__linux", NULL);
 # endif
 # if defined(__FreeBSD__)
-#  define str(s) #s
-    tcc_define_symbol(s, "__FreeBSD__", str( __FreeBSD__));
-#  undef str
+    tcc_define_symbol(s, "__FreeBSD__", "__FreeBSD__");
 # endif
 # if defined(__FreeBSD_kernel__)
     tcc_define_symbol(s, "__FreeBSD_kernel__", NULL);
 # endif
 #endif
 # if defined(__NetBSD__)
-#  define str(s) #s
-    tcc_define_symbol(s, "__NetBSD__", str( __NetBSD__));
-#  undef str
+    tcc_define_symbol(s, "__NetBSD__", "__NetBSD__");
 # endif
 
     /* TinyCC & gcc defines */
@@ -2307,11 +2303,8 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
         case TCC_OPTION_d:
             if (*optarg == 'D' || *optarg == 'M')
                 s->dflag = *optarg;
-            else {
-                if (s->warn_unsupported)
-                    goto unsupported_option;
-                tcc_error("invalid option -- '%s'", r);
-            }
+            else 
+                goto unsupported_option;
             break;
 #ifdef TCC_TARGET_ARM
         case TCC_OPTION_float_abi:
@@ -2401,12 +2394,11 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
             do ++s->verbose; while (*optarg++ == 'v');
             break;
         case TCC_OPTION_f:
-            if (tcc_set_flag(s, optarg, 1) < 0 && s->warn_unsupported)
+            if (tcc_set_flag(s, optarg, 1) < 0)
                 goto unsupported_option;
             break;
         case TCC_OPTION_W:
-            if (tcc_set_warning(s, optarg, 1) < 0 &&
-                s->warn_unsupported)
+            if (tcc_set_warning(s, optarg, 1) < 0)
                 goto unsupported_option;
             break;
         case TCC_OPTION_w:
@@ -2489,10 +2481,9 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
             /* ignored */
             break;
         default:
-            if (s->warn_unsupported) {
-            unsupported_option:
-                tcc_warning("unsupported option '%s'", r);
-            }
+unsupported_option:
+            if (s->warn_unsupported)
+                 tcc_warning("unsupported option '%s'", r);
             break;
         }
     }
