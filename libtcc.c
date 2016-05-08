@@ -1283,8 +1283,6 @@ LIBTCCAPI void tcc_delete(TCCState *s1)
     /* close a preprocessor output */
     if (s1->ppfp && s1->ppfp != stdout)
         fclose(s1->ppfp);
-    if (s1->dffp && s1->dffp != s1->ppfp)
-        fclose(s1->dffp);
 
 #ifdef CONFIG_TCC_EXSYMTAB
     /* Clean up the extended symbol table if it was never copied. */
@@ -1681,11 +1679,10 @@ LIBTCCAPI int tcc_set_output_type(TCCState *s, int output_type)
             if (!s->ppfp)
                 tcc_error("could not write '%s'", s->outfile);
         }
-        s->dffp = s->ppfp;
-        if (s->dflag == 'M')
-            s->ppfp = NULL;
+        if (s->option_C && (s->dflag & DFLAG_M))
+            s->option_C = 0;
     }
-    if (s->option_C && !s->ppfp)
+    else
         s->option_C = 0;
 
     if (!s->nostdinc) {
@@ -1751,8 +1748,6 @@ LIBTCCAPI int tcc_set_output_type(TCCState *s, int output_type)
 
     if (s->normalize_inc_dirs)
         tcc_normalize_inc_dirs(s);
-    if (s->output_type == TCC_OUTPUT_PREPROCESS)
-        print_defines();
 
     return 0;
 }
@@ -2301,9 +2296,13 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
             s->option_C = 1;
             break;
         case TCC_OPTION_d:
-            if (*optarg == 'D' || *optarg == 'M')
-                s->dflag = *optarg;
-            else 
+            if (*optarg == 'b')
+                s->dflag = DFLAG_BUILTINS;
+            else if (*optarg == 'D')
+                s->dflag = DFLAG_BUILTINS + DFLAG_D;
+            else if (*optarg == 'M')
+                s->dflag = DFLAG_BUILTINS + DFLAG_M;
+            else
                 goto unsupported_option;
             break;
 #ifdef TCC_TARGET_ARM

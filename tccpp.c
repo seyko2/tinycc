@@ -49,6 +49,10 @@ static char token_buf[STRING_MAX_SIZE + 1];
 static CString cstr_buf, cstr_mbuf;
 static TokenString tokstr_buf;
 static unsigned char isidnum_table[256 - CH_EOF];
+static int pp_debug_tok, pp_debug_symv;
+static void tok_print(const char *msg, const int *str);
+static void pp_line(TCCState *s1, BufferedFile *f, int level);
+
 /* isidnum_table flags: */
 #define IS_SPC 1
 #define IS_ID  2
@@ -127,6 +131,21 @@ ST_FUNC void end_macro(void)
         if (str->alloc == 1)
             tcc_free(str);
     }
+}
+
+ST_FUNC char *trimfront(char *p)
+{
+    while (*p && (unsigned char)*p <= ' ')
+        ++p;
+    return p;
+}
+
+ST_FUNC char *trimback(char *a, char *e)
+{
+    while (e > a && (unsigned char)e[-1] <= ' ')
+        --e;
+    *e = 0;;
+    return a;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -690,24 +709,6 @@ ST_FUNC void minp(void)
     inp();
     if (ch == '\\') 
         handle_stray();
-}
-
-static void pp_line(TCCState *s1, BufferedFile *f, int level)
-{
-    if (s1->ppfp) {
-        int d = f->line_num - f->line_ref;
-        if (s1->Pflag == LINE_MACRO_OUTPUT_FORMAT_NONE
-            || (level == 0 && f->line_ref && d < 8)) {
-            while (d > 0)
-                fputs("\n", s1->ppfp), --d;
-        } else if (s1->Pflag == LINE_MACRO_OUTPUT_FORMAT_STD) {
-            fprintf(s1->ppfp, "#line %d \"%s\"\n", f->line_num, f->filename);
-        } else {
-            fprintf(s1->ppfp, "# %d \"%s\"%s\n", f->line_num, f->filename,
-                level > 0 ? " 1" : level < 0 ? " 2" : "");
-        }
-    }
-    f->line_ref = f->line_num;
 }
 
 static uint8_t *parse_print_comment(uint8_t *p, int is_line_comment)
@@ -1321,88 +1322,6 @@ static int macro_is_equal(const int *a, const int *b)
     return !(*a || *b);
 }
 
-static void tok_print(const char *msg, const int *str)
-{
-    FILE *pr = tcc_state->dffp;
-    int t;
-    CValue cval;
-
-    fprintf(pr, "%s ", msg);
-    while (str) {
-        TOK_GET(&t, &str, &cval);
-        if (!t)
-            break;
-        fprintf(pr,"%s", get_tok_str(t, &cval));
-    }
-    fprintf(pr, "\n");
-}
-
-static int define_print_prepared(Sym *s)
-{
-    if (!s || !tcc_state->dffp || tcc_state->dflag == 0)
-        return 0;
-
-    if (s->v < TOK_IDENT || s->v >= tok_ident)
-        return 0;
-
-    if (file && tcc_state->dflag == 'D') {
-        file->line_num--;
-        pp_line(tcc_state, file, 0);
-        file->line_ref = ++file->line_num;
-    }
-    return 1;
-}
-
-static void define_print(int v)
-{
-    FILE *pr = tcc_state->dffp;
-    Sym *s, *a;
-
-    s = define_find(v);
-    if (define_print_prepared(s) == 0)
-        return;
-
-    fprintf(pr, "%s#define %s", tcc_state->dflag=='D'? "// " : "",
-	get_tok_str(v, NULL));
-    if (s->type.t == MACRO_FUNC) {
-        a = s->next;
-        fprintf(pr,"(");
-        if (a)
-            for (;;) {
-                fprintf(pr,"%s", get_tok_str(a->v & ~SYM_FIELD, NULL));
-                if (!(a = a->next))
-                    break;
-                fprintf(pr,",");
-            }
-        fprintf(pr,")");
-    }
-    tok_print("", s->d);
-}
-
-static void undef_print(int v)
-{
-    FILE *pr = tcc_state->dffp;
-    Sym *s;
-
-#ifdef CONFIG_TCC_EXSYMTAB
-    v &= ~SYM_EXTENDED;
-#endif
-    s = define_find(v);
-    if (define_print_prepared(s) == 0)
-        return;
-
-    fprintf(pr, "// #undef %s\n", get_tok_str(s->v, NULL));
-}
-
-ST_FUNC void print_defines(void)
-{
-    Sym *top = define_stack;
-    while (top) {
-        define_print(top->v);
-        top = top->prev;
-    }
-}
-
 /* defines handling */
 ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg)
 {
@@ -1415,7 +1334,7 @@ ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg
     table_ident[v - TOK_IDENT]->sym_define = s;
 
     if (o && !macro_is_equal(o->d, s->d))
-	tcc_warning("%s redefined", get_tok_str(v, NULL));
+        tcc_warning("%s redefined", get_tok_str(v, NULL));
 }
 
 
@@ -1426,7 +1345,6 @@ ST_FUNC void define_undef(Sym *s)
 #ifdef CONFIG_TCC_EXSYMTAB
     v &= ~SYM_EXTENDED;
 #endif
-    undef_print(v);
     if (v >= TOK_IDENT && v < tok_ident)
         table_ident[v - TOK_IDENT]->sym_define = NULL;
 }
@@ -1643,7 +1561,6 @@ ST_FUNC void parse_define(void)
 bad_twosharp:
         tcc_error("'##' cannot appear at either end of macro");
     define_push(v, t, &tokstr_buf, first);
-    define_print(v);
 }
 
 static inline int hash_cached_include(const char *filename)
@@ -1730,6 +1647,7 @@ static void pragma_parse(TCCState *s1)
             table_ident[v - TOK_IDENT]->sym_define = s->d ? s : NULL;
         else
             tcc_warning("unbalanced #pragma pop_macro");
+        pp_debug_tok = t, pp_debug_symv = v;
 
     } else if (tok == TOK_once) {
         char buf1[sizeof(file->filename) + sizeof(ONCE_PREFIX)];
@@ -1830,11 +1748,15 @@ ST_FUNC void preprocess(int is_bof)
  redo:
     switch(tok) {
     case TOK_DEFINE:
+        pp_debug_tok = tok;
         next_nomacro();
+        pp_debug_symv = tok;
         parse_define();
         break;
     case TOK_UNDEF:
+        pp_debug_tok = tok;
         next_nomacro();
+        pp_debug_symv = tok;
         s = define_find(tok);
         /* undefine symbol by putting an invalid name */
         if (s)
@@ -3627,8 +3549,6 @@ ST_INLN void unget_tok(int last_tok)
     tok = last_tok;
 }
 
-/* better than nothing, but needs extension to handle '-E' option
-   correctly too */
 ST_FUNC void preprocess_init(TCCState *s1)
 {
     s1->include_stack_ptr = s1->include_stack;
@@ -3725,6 +3645,114 @@ ST_FUNC void preprocess_delete(void)
     cstr_alloc = NULL;
 }
 
+/* tcc -E [-P[1]] [-dD} support */
+
+static void tok_print(const char *msg, const int *str)
+{
+    FILE *fp;
+    int t;
+    CValue cval;
+
+    fp = tcc_state->ppfp;
+    if (!fp || !tcc_state->dflag)
+        fp = stdout;
+
+    fprintf(fp, "%s ", msg);
+    while (str) {
+        TOK_GET(&t, &str, &cval);
+        if (!t)
+            break;
+        fprintf(fp,"%s", get_tok_str(t, &cval));
+    }
+    fprintf(fp, "\n");
+}
+
+static void pp_line(TCCState *s1, BufferedFile *f, int level)
+{
+    int d;
+    if (s1->dflag & DFLAG_M)
+        return;
+    d = f->line_num - f->line_ref;
+    if (s1->Pflag == LINE_MACRO_OUTPUT_FORMAT_NONE
+        || (level == 0 && f->line_ref && d < 8)) {
+        while (d > 0)
+            fputs("\n", s1->ppfp), --d;
+    } else if (s1->Pflag == LINE_MACRO_OUTPUT_FORMAT_STD) {
+        fprintf(s1->ppfp, "#line %d \"%s\"\n", f->line_num, f->filename);
+    } else {
+        fprintf(s1->ppfp, "# %d \"%s\"%s\n", f->line_num, f->filename,
+            level > 0 ? " 1" : level < 0 ? " 2" : "");
+    }
+    f->line_ref = f->line_num;
+}
+
+static void define_print(TCCState *s1, int v)
+{
+    FILE *fp;
+    Sym *s;
+
+    s = define_find(v);
+    if (NULL == s)      /* || NULL == s->d */
+        return;
+
+    fp = s1->ppfp;
+    fprintf(fp, "%s#define %s", (s1->dflag & DFLAG_M) ? "" : "// ",
+        get_tok_str(v, NULL));
+    if (s->type.t == MACRO_FUNC) {
+        Sym *a = s->next;
+        fprintf(fp,"(");
+        if (a)
+            for (;;) {
+                fprintf(fp,"%s", get_tok_str(a->v & ~SYM_FIELD, NULL));
+                if (!(a = a->next))
+                    break;
+                fprintf(fp,",");
+            }
+        fprintf(fp,")");
+    }
+    tok_print("", s->d);
+}
+
+static void pp_debug_defines(TCCState *s1)
+{
+    int v, t;
+    const char *vs, *pref;
+    FILE *fp;
+
+    t = pp_debug_tok;
+    if (t == 0)
+        return;
+
+    file->line_num--;
+    pp_line(s1, file, 0);
+    file->line_ref = ++file->line_num;
+
+    fp = s1->ppfp;
+    v = pp_debug_symv;
+#ifdef CONFIG_TCC_EXSYMTAB
+    v &= ~SYM_EXTENDED;
+#endif
+    vs = get_tok_str(v, NULL);
+    pref = (s1->dflag & DFLAG_M) ? "" : "// ";
+    if (t == TOK_DEFINE) {
+        define_print(s1, v);
+    } else if (t == TOK_UNDEF) {
+        fprintf(fp, "%s#undef %s\n", pref, vs);
+    } else if (t == TOK_push_macro) {
+        fprintf(fp, "%s#pragma push_macro(\"%s\")\n", pref, vs);
+    } else if (t == TOK_pop_macro) {
+        fprintf(fp, "%s#pragma pop_macro(\"%s\")\n", pref, vs);
+    }
+    pp_debug_tok = 0;
+}
+
+static void pp_debug_builtins(TCCState *s1)
+{
+    int v;
+    for (v = TOK_IDENT; v < tok_ident; ++v)
+        define_print(s1, v);
+}
+
 static int need_space(int prev_tok, int tok, const char *tokstr)
 {
     const char *sp_chars = "";
@@ -3795,6 +3823,11 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
     do next(); while (tok != TOK_EOF); return 0;
 #endif
 
+    if (s1->dflag & DFLAG_BUILTINS) {
+        pp_debug_builtins(s1);
+        s1->dflag &= ~DFLAG_BUILTINS;
+    }
+
     token_seen = TOK_LINEFEED; spcs = 0;
     pp_line(s1, file, 0);
 
@@ -3808,6 +3841,12 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
             if (level > 0)
                 pp_line(s1, *iptr, 0);
             pp_line(s1, file, level);
+        }
+
+        if (s1->dflag) {
+            pp_debug_defines(s1);
+            if (s1->dflag & DFLAG_M)
+                continue;
         }
 
         if (token_seen == TOK_LINEFEED) {
@@ -3826,31 +3865,19 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
         tokstr = get_tok_str(tok, &tokc);
         if (!spcs && need_space(token_seen, tok, tokstr))
             ++spcs;
-        if (s1->ppfp) {
-            while (spcs > 0)
-                fputs(" ", s1->ppfp), --spcs;
-            fputs(tokstr, s1->ppfp);
-        }
+        while (spcs > 0)
+            fputs(" ", s1->ppfp), --spcs;
+        fputs(tokstr, s1->ppfp);
         token_seen = tok;
-        spcs = 0;
     }
 
+    if (!(s1->dflag & DFLAG_M)) {
+        while (spcs > 0)
+            fputs(" ", s1->ppfp), --spcs;
+        if (file->line_num - file->line_ref)
+            pp_line(s1, file, 0);
+    }
     return 0;
-}
-
-ST_FUNC char *trimfront(char *p)
-{
-    while (*p && (unsigned char)*p <= ' ')
-        ++p;
-    return p;
-}
-
-ST_FUNC char *trimback(char *a, char *e)
-{
-    while (e > a && (unsigned char)e[-1] <= ' ')
-        --e;
-    *e = 0;;
-    return a;
 }
 
 #ifdef CONFIG_TCC_EXSYMTAB

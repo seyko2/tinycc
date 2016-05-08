@@ -104,7 +104,7 @@ static void help(void)
            "  -E          preprocess only\n"
            "    -P[1]       no/alternative output of #line directives\n"
            "    -d{D|M}     dump defines\n"
-           "    -C          keep comments\n"
+           "    -C          keep comments (-dM not present)\n"
            "Linker options:\n"
            "  -Ldir       add library path 'dir'\n"
            "  -llib       link with dynamic or static library 'lib'\n"

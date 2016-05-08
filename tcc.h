@@ -785,8 +785,11 @@ struct TCCState {
 	LINE_MACRO_OUTPUT_FORMAT_NONE,
 	LINE_MACRO_OUTPUT_FORMAT_STD
     } Pflag; /* -P switch */
-    char dflag; /* -dX value */
-    FILE *dffp;
+    enum {
+        DFLAG_BUILTINS = 1,
+        DFLAG_D        = 2,
+        DFLAG_M        = 4,
+    } dflag; /* -dX value */
 
     /* for -MD/-MF: collected dependencies for this compilation */
     char **target_deps;
@@ -1322,7 +1325,6 @@ ST_INLN void define_push(int v, int macro_type, TokenString *str, Sym *first_arg
 ST_FUNC void define_undef(Sym *s);
 ST_INLN Sym *define_find(int v);
 ST_FUNC void free_defines(Sym *b);
-ST_FUNC void print_defines(void);
 ST_FUNC Sym *label_find(int v);
 ST_FUNC Sym *label_push(Sym **ptop, int v, int flags);
 ST_FUNC void label_pop(Sym **ptop, Sym *slast);
