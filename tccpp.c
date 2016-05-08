@@ -48,7 +48,6 @@ static TokenSym *hash_ident[TOK_HASH_SIZE];
 static char token_buf[STRING_MAX_SIZE + 1];
 static CString cstr_buf, cstr_mbuf;
 static TokenString tokstr_buf;
-static TokenString tokstr_buf2;
 static unsigned char isidnum_table[256 - CH_EOF];
 /* isidnum_table flags: */
 #define IS_SPC 1
@@ -3598,48 +3597,9 @@ ST_FUNC void next(void)
         /* if reading from file, try to substitute macros */
         s = define_find(tok);
         if (s) {
-            if (tcc_state->output_type == TCC_OUTPUT_PREPROCESS)
-            {
-                int t = 0;
-                Sym *nested_list = NULL;
-                tokstr_buf2.len = 0;
-                macro_subst_tok(&tokstr_buf2, &nested_list, s, 1);
-                {
-                    CValue cval;
-                    const int *str  = tokstr_buf2.str;
-                    const int *str1 = tokstr_buf2.str + tokstr_buf2.len;
-                    int tok = 0;
-                    tokstr_buf.len = 0;
-                    while (str < str1) {
-                        t = tok;
-                        TOK_GET(&tok, &str, &cval);
-                        if (t == TOK_PPNUM && (tok == '+' || tok == '-'))
-                            tok_str_add(&tokstr_buf, ' ');
-                        tok_str_add2(&tokstr_buf, tok, &cval);
-                    }
-                    t = tok;
-                }
-                if (macro_ptr)
-                    ch = *macro_ptr;
-                else
-                    ch = handle_eob();
-                if (t == TOK_PPNUM && (ch == '+' || ch == '-' || ch >= 'a')) {
-                    tok_str_add(&tokstr_buf, ' ');
-                } else
-                if ((t == TOK_INC || t == TOK_DEC) && (ch == '+' || ch == '-')) {
-                    tok_str_add(&tokstr_buf, ch);
-                    tok_str_add(&tokstr_buf, ' ');
-                    if (macro_ptr)
-                        macro_ptr++;
-                    else
-                        file->buf_ptr++;
-                }
-            }
-            else {
-                Sym *nested_list = NULL;
-                tokstr_buf.len = 0;
-                macro_subst_tok(&tokstr_buf, &nested_list, s, 1);
-            }
+            Sym *nested_list = NULL;
+            tokstr_buf.len = 0;
+            macro_subst_tok(&tokstr_buf, &nested_list, s, 1);
             tok_str_add(&tokstr_buf, 0);
             begin_macro(&tokstr_buf, 2);
             goto redo;
@@ -3716,8 +3676,6 @@ ST_FUNC void preprocess_new(void)
     cstr_realloc(&cstr_mbuf, STRING_MAX_SIZE);
     tok_str_new(&tokstr_buf);
     tok_str_realloc(&tokstr_buf, TOKSTR_MAX_SIZE);
-    tok_str_new(&tokstr_buf2);
-    tok_str_realloc(&tokstr_buf2, TOKSTR_MAX_SIZE);
     
     tok_ident = TOK_IDENT;
     p = tcc_keywords;
@@ -3757,7 +3715,6 @@ ST_FUNC void preprocess_delete(void)
     cstr_free(&cstr_buf);
     cstr_free(&cstr_mbuf);
     tok_str_free(tokstr_buf.str);
-    tok_str_free(tokstr_buf2.str);
 
     /* free allocators */
     tal_delete(toksym_alloc, "toksym");
@@ -3773,6 +3730,8 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
 {
     BufferedFile **iptr;
     int token_seen, spcs, level;
+    const char *sp_chars = ""; /* insert space before any of these */
+    int prev_tok = 0;
 
     preprocess_init(s1);
     ch = file->buf_ptr[0];
@@ -3822,8 +3781,57 @@ ST_FUNC int tcc_preprocess(TCCState *s1)
             ++file->line_ref;
             token_seen = 0;
         }
-        if (s1->ppfp)
-            fputs(get_tok_str(tok, &tokc), s1->ppfp);
+        if (s1->ppfp) {
+            const char *t = get_tok_str(tok, &tokc);
+            if (strchr(sp_chars, t[0]) ||
+                ((tok >= TOK_IDENT || tok == TOK_PPNUM) &&
+                 (prev_tok >= TOK_IDENT || prev_tok == TOK_PPNUM)))
+                fputs(" ", s1->ppfp);
+            fputs(t, s1->ppfp);
+            prev_tok = tok;
+            switch (tok) {
+            case '+':
+                sp_chars = "+=";
+                break;
+            case '-':
+                sp_chars = "-=>";
+                break;
+            case '*':
+            case '/':
+            case '%':
+            case '^':
+            case '=':
+            case '!':
+            case TOK_A_SHL:
+            case TOK_A_SAR:
+                sp_chars = "=";
+                break;
+            case '&':
+                sp_chars = "&=";
+                break;
+            case '|':
+                sp_chars = "|=";
+                break;
+            case '<':
+                sp_chars = "<=";
+                break;
+            case '>':
+                sp_chars = ">=";
+                break;
+            case '.':
+                sp_chars = ".";
+                break;
+            case '#':
+                sp_chars = "#";
+                break;
+            case TOK_PPNUM:
+                sp_chars = "+-";
+                break;
+            default:
+                sp_chars = "";
+                break;
+            }
+        }
     }
 
     return 0;
