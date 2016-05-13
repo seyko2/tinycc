@@ -619,11 +619,7 @@ typedef struct CachedInclude {
 
 #ifdef CONFIG_TCC_ASM
 typedef struct ExprValue {
-#ifdef TCC_TARGET_I386
     uint32_t v;
-#else
-    uint64_t v;
-#endif
     Sym *sym;
 } ExprValue;
 
