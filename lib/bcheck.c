@@ -17,7 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include <stddef.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -25,8 +25,9 @@
     && !defined(__DragonFly__) && !defined(__OpenBSD__) && !defined(__NetBSD__)
 #include <malloc.h>
 #endif
-
-extern void *sbrk (intptr_t __delta);
+#if !defined(_WIN32)
+#include <unistd.h>
+#endif
 
 /* #define BOUND_DEBUG */
 

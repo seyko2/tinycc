@@ -9,7 +9,7 @@
  * without any warranty.
  */
 
-#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 void __clear_cache(void *beg, void *end)
