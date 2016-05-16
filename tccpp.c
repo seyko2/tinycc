@@ -769,7 +769,7 @@ static uint8_t *parse_line_comment(uint8_t *p)
     int c;
 
     p++;
-    if (tcc_state->option_C == 3)
+    if (tcc_state->option_C)
         return parse_print_comment(p, 1);
     for(;;) {
         c = *p;
@@ -808,7 +808,7 @@ ST_FUNC uint8_t *parse_comment(uint8_t *p)
     int c;
 
     p++;
-    if (tcc_state->option_C == 3)
+    if (tcc_state->option_C)
         return parse_print_comment(p, 0);
     for(;;) {
         /* fast skip loop */
@@ -1015,13 +1015,11 @@ redo_start:
             ch = *p;
             minp();
             p = file->buf_ptr;
-            tcc_state->option_C += 2;
             if (ch == '*') {
                 p = parse_comment(p);
             } else if (ch == '/') {
                 p = parse_line_comment(p);
             }
-            tcc_state->option_C -= 2;
             break;
         case '#':
             p++;
