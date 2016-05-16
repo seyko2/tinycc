@@ -754,18 +754,22 @@ static uint8_t *parse_print_comment(uint8_t *p, int is_line_comment)
     if (!is_line_comment) {
         fputc('/', ppfp);
         p++;
+        if (*p == '\n') {
+            file->line_num++;
+            fputc('\n', ppfp);
+        }
         file->line_ref = file->line_num;
     }
     return p;
 }
 
 /* single line C++ comments */
-static uint8_t *parse_line_comment(uint8_t *p, int skip)
+static uint8_t *parse_line_comment(uint8_t *p)
 {
     int c;
 
     p++;
-    if (tcc_state->option_C && !skip)
+    if (tcc_state->option_C == 3)
         return parse_print_comment(p, 1);
     for(;;) {
         c = *p;
@@ -799,12 +803,12 @@ static uint8_t *parse_line_comment(uint8_t *p, int skip)
 }
 
 /* C comments */
-ST_FUNC uint8_t *parse_comment(uint8_t *p, int skip)
+ST_FUNC uint8_t *parse_comment(uint8_t *p)
 {
     int c;
 
     p++;
-    if (tcc_state->option_C && !skip)
+    if (tcc_state->option_C == 3)
         return parse_print_comment(p, 0);
     for(;;) {
         /* fast skip loop */
@@ -1011,11 +1015,13 @@ redo_start:
             ch = *p;
             minp();
             p = file->buf_ptr;
+            tcc_state->option_C += 2;
             if (ch == '*') {
-                p = parse_comment(p,1);
+                p = parse_comment(p);
             } else if (ch == '/') {
-                p = parse_line_comment(p,1);
+                p = parse_line_comment(p);
             }
+            tcc_state->option_C -= 2;
             break;
         case '#':
             p++;
@@ -1035,9 +1041,9 @@ redo_start:
                 else if (tok == TOK_LINEFEED)
                     goto redo_start;
                 else if (parse_flags & PARSE_FLAG_ASM_FILE)
-                    p = parse_line_comment(p,0);
+                    p = parse_line_comment(p);
             } else if (parse_flags & PARSE_FLAG_ASM_FILE)
-                p = parse_line_comment(p,0);
+                p = parse_line_comment(p);
             break;
 _default:
         default:
@@ -2026,7 +2032,7 @@ _line_num:
             goto ignore;
         tcc_warning("Ignoring unknown preprocessing directive #%s", get_tok_str(tok, &tokc));
     ignore:
-        file->buf_ptr = parse_line_comment(file->buf_ptr,0);
+        file->buf_ptr = parse_line_comment(file->buf_ptr);
         goto the_end;
     }
     /* ignore other preprocess commands or #! for C scripts */
@@ -2622,7 +2628,7 @@ maybe_newline:
                 tok = TOK_TWOSHARPS;
             } else {
                 if (parse_flags & PARSE_FLAG_ASM_FILE) {
-                    p = parse_line_comment(p - 1,0);
+                    p = parse_line_comment(p - 1);
                     goto redo_no_start;
                 } else {
                     tok = '#';
@@ -2903,14 +2909,14 @@ maybe_newline:
     case '/':
         PEEKC(c, p);
         if (c == '*') {
-            p = parse_comment(p,0);
+            p = parse_comment(p);
             /* comments replaced by a blank */
             tok = ' ';
             if (tcc_state->option_C)
                 goto redo_no_start;
             goto keep_tok_flags;
         } else if (c == '/') {
-            p = parse_line_comment(p,0);
+            p = parse_line_comment(p);
             tok = ' ';
             if (tcc_state->option_C)
                 goto redo_no_start;
@@ -3135,10 +3141,10 @@ static int next_argstream(Sym **nested_list, int can_read_stream, TokenString *w
                         uint8_t *p = file->buf_ptr;
                         PEEKC(c, p);
                         if (c == '*') {
-                            p = parse_comment(p,0);
+                            p = parse_comment(p);
                             file->buf_ptr = p - 1;
                         } else if (c == '/') {
-                            p = parse_line_comment(p,0);
+                            p = parse_line_comment(p);
                             file->buf_ptr = p - 1;
                         } else
                             break;
