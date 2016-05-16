@@ -1455,7 +1455,7 @@ ST_FUNC int tcc_add_file_internal(TCCState *s1, const char *filename, int flags,
 
     if (memcmp((char *)&ehdr, ARMAG, 8) == 0) {
         file->line_num = 0; /* do not display line number if error */
-        ret = tcc_load_archive(s1, fd, filetype == TCC_FILETYPE_B_WHOLE);
+        ret = tcc_load_archive(s1, fd);
         goto the_end;
     }
 
@@ -1473,11 +1473,9 @@ ST_FUNC int tcc_add_file_internal(TCCState *s1, const char *filename, int flags,
     ret = tcc_load_ldscript(s1);
 #endif
     if (ret < 0)
-        tcc_error_noabort("%s: unrecognized file type (error=%d)", filename, ret);
+        tcc_error_noabort("unrecognized file type");
 
 the_end:
-    if (s1->verbose)
-        printf("+> %s\n", filename);
     tcc_close();
     return ret;
 }
@@ -1497,14 +1495,14 @@ LIBTCCAPI int tcc_add_library_path(TCCState *s, const char *pathname)
 }
 
 static int tcc_add_library_internal(TCCState *s, const char *fmt,
-    const char *filename, int flags, char **paths, int nb_paths, int filetype)
+    const char *filename, int flags, char **paths, int nb_paths)
 {
     char buf[1024];
     int i;
 
     for(i = 0; i < nb_paths; i++) {
         snprintf(buf, sizeof(buf), fmt, paths[i], filename);
-        if (tcc_add_file_internal(s, buf, flags, filetype) == 0)
+        if (tcc_add_file_internal(s, buf, flags, TCC_FILETYPE_BINARY) == 0)
             return 0;
     }
     return -1;
@@ -1516,20 +1514,20 @@ static int tcc_add_library_internal(TCCState *s, const char *fmt,
 ST_FUNC int tcc_add_dll(TCCState *s, const char *filename, int flags)
 {
     return tcc_add_library_internal(s, "%s/%s", filename, flags,
-        s->library_paths, s->nb_library_paths, TCC_FILETYPE_BINARY);
+        s->library_paths, s->nb_library_paths);
 }
 #endif
 
 ST_FUNC int tcc_add_crt(TCCState *s, const char *filename)
 {
     if (-1 == tcc_add_library_internal(s, "%s/%s",
-        filename, 0, s->crt_paths, s->nb_crt_paths, TCC_FILETYPE_BINARY))
+        filename, 0, s->crt_paths, s->nb_crt_paths))
         tcc_error_noabort("file '%s' not found", filename);
     return 0;
 }
 
 /* the library name is the same as the argument of the '-l' option */
-LIBTCCAPI int tcc_add_library(TCCState *s, const char *libraryname, int filetype)
+LIBTCCAPI int tcc_add_library(TCCState *s, const char *libraryname)
 {
 #ifdef TCC_TARGET_PE
     const char *libs[] = { "%s/%s.def", "%s/lib%s.def", "%s/%s.dll", "%s/lib%s.dll", "%s/lib%s.a", NULL };
@@ -1540,7 +1538,7 @@ LIBTCCAPI int tcc_add_library(TCCState *s, const char *libraryname, int filetype
 #endif
     while (*pp) {
         if (0 == tcc_add_library_internal(s, *pp,
-            libraryname, 0, s->library_paths, s->nb_library_paths, filetype))
+            libraryname, 0, s->library_paths, s->nb_library_paths))
             return 0;
         ++pp;
     }
@@ -1549,7 +1547,7 @@ LIBTCCAPI int tcc_add_library(TCCState *s, const char *libraryname, int filetype
 
 PUB_FUNC int tcc_add_library_err(TCCState *s, const char *libname)
 {
-    int ret = tcc_add_library(s, libname, TCC_FILETYPE_BINARY);
+    int ret = tcc_add_library(s, libname);
     if (ret < 0)
         tcc_error_noabort("cannot find library 'lib%s'", libname);
     return ret;
@@ -2151,7 +2149,7 @@ static void parse_option_D(TCCState *s1, const char *optarg)
     tcc_free(sym);
 }
 
-static void args_parser_add_file(TCCState *s, const char* filename, int filetype, int binary_type)
+static void args_parser_add_file(TCCState *s, const char* filename, int filetype)
 {
     int len = strlen(filename);
     char *p = tcc_malloc(len + 2);
@@ -2172,7 +2170,7 @@ static void args_parser_add_file(TCCState *s, const char* filename, int filetype
             if (!PATHCMP(ext, "c") || !PATHCMP(ext, "i"))
                 *p = TCC_FILETYPE_C;
             else
-                *p = binary_type;
+                *p = TCC_FILETYPE_BINARY;
         }
         else {
             *p = TCC_FILETYPE_C;
@@ -2213,7 +2211,7 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
                 tcc_parse_args1(s, argc, argv);
                 dynarray_reset(&argv, &argc);
             } else {
-                args_parser_add_file(s, r, pas->filetype, pas->binary_type);
+                args_parser_add_file(s, r, pas->filetype);
                 if (pas->run) {
                     optind--;
                     /* argv[0] will be this file */
@@ -2263,7 +2261,7 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
             tcc_set_lib_path(s, optarg);
             break;
         case TCC_OPTION_l:
-            args_parser_add_file(s, r, pas->binary_type, 0);
+            args_parser_add_file(s, r, TCC_FILETYPE_BINARY);
             s->nb_libraries++;
             break;
         case TCC_OPTION_pthread:
@@ -2407,16 +2405,6 @@ ST_FUNC int tcc_parse_args1(TCCState *s, int argc, char **argv)
             s->rdynamic = 1;
             break;
         case TCC_OPTION_Wl:
-            if (optarg && *optarg == '-') {
-                int offs = 0;
-                if (!strncmp("-no", optarg+1, 3))
-                    offs += 3;
-                if (!strcmp("-whole-archive", optarg+1 + offs)) {
-                    pas->binary_type = (offs == 0) ? TCC_FILETYPE_B_WHOLE :
-                        TCC_FILETYPE_BINARY;
-                    break;
-                }
-            }
             if (pas->linker_arg.size)
                 --pas->linker_arg.size, cstr_ccat(&pas->linker_arg, ',');
             cstr_cat(&pas->linker_arg, optarg, 0);
@@ -2498,7 +2486,6 @@ PUB_FUNC int tcc_parse_args(TCCState *s, int argc, char **argv)
         s->parse_args_state = tcc_mallocz(sizeof(ParseArgsState));
         cstr_new(&s->parse_args_state->linker_arg);
         is_allocated = 1;
-        s->parse_args_state->binary_type = TCC_FILETYPE_BINARY;
     }
     pas = s->parse_args_state;
 

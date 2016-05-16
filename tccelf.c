@@ -1621,7 +1621,7 @@ ST_FUNC void tcc_add_runtime(TCCState *s1)
 
     /* add libc */
     if (!s1->nostdlib) {
-        tcc_add_library(s1, "c", TCC_FILETYPE_BINARY);
+        tcc_add_library(s1, "c");
 #ifdef CONFIG_USE_LIBGCC
         if (!s1->static_link) {
             tcc_add_file(s1, TCC_LIBGCC, TCC_FILETYPE_BINARY);
@@ -3054,7 +3054,7 @@ static int get_be32(const uint8_t *b)
 }
 
 /* load only the objects which resolve undefined symbols */
-static int tcc_load_alacarte(TCCState *s1, int fd, int size, int whole_archive)
+static int tcc_load_alacarte(TCCState *s1, int fd, int size)
 {
     int i, bound, nsyms, sym_index, off, ret;
     uint8_t *data;
@@ -3076,7 +3076,6 @@ static int tcc_load_alacarte(TCCState *s1, int fd, int size, int whole_archive)
             if(sym_index) {
                 sym = &((ElfW(Sym) *)symtab_section->data)[sym_index];
                 if(sym->st_shndx == SHN_UNDEF) {
-            load_obj:
                     off = get_be32(ar_index + i * 4) + sizeof(ArchiveHeader);
                     ++bound;
                     lseek(fd, off, SEEK_SET);
@@ -3086,8 +3085,6 @@ static int tcc_load_alacarte(TCCState *s1, int fd, int size, int whole_archive)
                         goto the_end;
                     }
                 }
-            } else if (whole_archive) {
-                goto load_obj;
             }
         }
     } while(bound);
@@ -3098,7 +3095,7 @@ static int tcc_load_alacarte(TCCState *s1, int fd, int size, int whole_archive)
 }
 
 /* load a '.a' file */
-ST_FUNC int tcc_load_archive(TCCState *s1, int fd, int whole_archive)
+ST_FUNC int tcc_load_archive(TCCState *s1, int fd)
 {
     ArchiveHeader hdr;
     char ar_size[11];
@@ -3133,7 +3130,7 @@ ST_FUNC int tcc_load_archive(TCCState *s1, int fd, int whole_archive)
         if (!strcmp(ar_name, "/")) {
             /* coff symbol table : we handle it */
             if(s1->alacarte_link)
-                return tcc_load_alacarte(s1, fd, size, whole_archive);
+                return tcc_load_alacarte(s1, fd, size);
         } else if (!strcmp(ar_name, "//") ||
                    !strcmp(ar_name, "__.SYMDEF") ||
                    !strcmp(ar_name, "__.SYMDEF/") ||

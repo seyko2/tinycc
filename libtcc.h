@@ -49,11 +49,10 @@ LIBTCCAPI void tcc_undefine_symbol(TCCState *s, const char *sym);
 
 /* add a file (C file, dll, object, library, ld script). Return -1 if error. */
 LIBTCCAPI int tcc_add_file(TCCState *s, const char *filename, int filetype);
-#define TCC_FILETYPE_BINARY  1
-#define TCC_FILETYPE_B_WHOLE 2
-#define TCC_FILETYPE_C       3
-#define TCC_FILETYPE_ASM     4
-#define TCC_FILETYPE_ASM_PP  5
+#define TCC_FILETYPE_BINARY 1
+#define TCC_FILETYPE_C      2
+#define TCC_FILETYPE_ASM    3
+#define TCC_FILETYPE_ASM_PP 4
 
 /* compile a string containing a C source. Return -1 if error. */
 LIBTCCAPI int tcc_compile_string(TCCState *s, const char *buf);
@@ -80,7 +79,7 @@ LIBTCCAPI int tcc_set_output_type(TCCState *s, int output_type);
 LIBTCCAPI int tcc_add_library_path(TCCState *s, const char *pathname);
 
 /* the library name is the same as the argument of the '-l' option */
-LIBTCCAPI int tcc_add_library(TCCState *s, const char *libraryname, int filetype);
+LIBTCCAPI int tcc_add_library(TCCState *s, const char *libraryname);
 
 /* add a symbol to the compiled program */
 LIBTCCAPI int tcc_add_symbol(TCCState *s, const char *name, const void *val);

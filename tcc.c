@@ -307,11 +307,7 @@ int main(int argc, char **argv)
         int filetype = *(unsigned char *)s->files[i];
         const char *filename = s->files[i] + 1;
         if (filename[0] == '-' && filename[1] == 'l') {
-            if (1 == s->verbose) {
-                const int w = (filetype == TCC_FILETYPE_B_WHOLE);
-                printf("%c> %s\n", w? '|':'-', filename);
-            }
-            if (tcc_add_library(s, filename + 2, filetype) < 0) {
+            if (tcc_add_library(s, filename + 2) < 0) {
                 /* don't fail on -lm as it's harmless to skip math lib */
                 if (strcmp(filename + 2, "m")) {
                     tcc_error_noabort("cannot find library 'lib%s'", filename + 2);
@@ -319,10 +315,8 @@ int main(int argc, char **argv)
                 }
             }
         } else {
-            if (1 == s->verbose) {
-                const int w = (filetype == TCC_FILETYPE_B_WHOLE);
-                printf("%c> %s\n", w? '|':'-', filename);
-            }
+            if (1 == s->verbose)
+                printf("-> %s\n", filename);
             if (!s->outfile)
                 s->outfile = default_outputfile(s, filename);
             if (tcc_add_file(s, filename, filetype) < 0)
