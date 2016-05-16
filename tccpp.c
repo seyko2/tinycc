@@ -754,10 +754,6 @@ static uint8_t *parse_print_comment(uint8_t *p, int is_line_comment)
     if (!is_line_comment) {
         fputc('/', ppfp);
         p++;
-        if (*p == '\n') {
-            file->line_num++;
-            fputc('\n', ppfp);
-        }
         file->line_ref = file->line_num;
     }
     return p;
@@ -769,7 +765,7 @@ static uint8_t *parse_line_comment(uint8_t *p)
     int c;
 
     p++;
-    if (tcc_state->option_C)
+    if (tcc_state->option_C == 1)
         return parse_print_comment(p, 1);
     for(;;) {
         c = *p;
@@ -808,7 +804,7 @@ ST_FUNC uint8_t *parse_comment(uint8_t *p)
     int c;
 
     p++;
-    if (tcc_state->option_C)
+    if (tcc_state->option_C == 1)
         return parse_print_comment(p, 0);
     for(;;) {
         /* fast skip loop */
@@ -1015,11 +1011,13 @@ redo_start:
             ch = *p;
             minp();
             p = file->buf_ptr;
+            tcc_state->option_C += 2;
             if (ch == '*') {
                 p = parse_comment(p);
             } else if (ch == '/') {
                 p = parse_line_comment(p);
             }
+            tcc_state->option_C -= 2;
             break;
         case '#':
             p++;
@@ -3680,8 +3678,11 @@ static void pp_line(TCCState *s1, BufferedFile *f, int level)
     if (s1->dflag & DFLAG_M)
         return;
     d = f->line_num - f->line_ref;
+    if (s1->option_C && d) {
+        fputs("\n", s1->ppfp), --d;
+    }
     if (s1->Pflag == LINE_MACRO_OUTPUT_FORMAT_NONE
-        || (level == 0 && f->line_ref && d < 8)) {
+        || (level == 0 && f->line_ref && d < 4)) {
         while (d > 0)
             fputs("\n", s1->ppfp), --d;
     } else if (s1->Pflag == LINE_MACRO_OUTPUT_FORMAT_STD) {
