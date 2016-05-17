@@ -234,7 +234,10 @@ if test "$mingw32" = "yes" ; then
     execprefix="$prefix"
     bindir="${prefix}"
     tccdir="${prefix}"
-    libdir="${prefix}/lib"
+    libdir="${prefix}/lib/32"
+    if test "$cpu" = "x86-64"; then
+      libdir="${prefix}/lib/64"
+    fi
     docdir="${sharedir}/doc"
     mandir="${sharedir}/man"
     infodir="${sharedir}/info"

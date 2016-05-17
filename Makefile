@@ -278,10 +278,17 @@ else
 INSTALLBIN=$(INSTALL)
 endif
 
+ifdef CONFIG_WIN32
+CONFIG_WIN=yes
+endif
+ifdef CONFIG_WIN64
+CONFIG_WIN=yes
+endif
+
 install-strip: install
 	strip $(foreach PROG,$(PROGS),"$(bindir)"/$(PROG))
 
-ifndef CONFIG_WIN32
+ifndef CONFIG_WIN
 install: $(PROGS) $(TCCLIBS) $(TCCDOCS)
 	mkdir -p "$(bindir)"
 	$(INSTALLBIN) -m755 $(PROGS) "$(bindir)"
@@ -339,20 +346,20 @@ else
 # on windows
 install: $(PROGS) $(TCCLIBS) $(TCCDOCS)
 	mkdir -p "$(tccdir)"
-	mkdir -p "$(tccdir)/lib"
-	mkdir -p "$(tccdir)/include"
+	mkdir -p "$(libdir)"
+	mkdir -p "$(includedir)"
 	mkdir -p "$(tccdir)/examples"
-	mkdir -p "$(tccdir)/doc"
-	mkdir -p "$(tccdir)/libtcc"
+	mkdir -p "$(docdir)"
 	$(INSTALLBIN) -m755 $(PROGS) "$(tccdir)"
-	$(INSTALLBIN) -m755 tcc.exe "$(tccdir)"
-	$(INSTALL) -m644 $(LIBTCC1) $(top_srcdir)/win32/lib/*.def "$(tccdir)/lib"
-	cp -r $(top_srcdir)/win32/include/. "$(tccdir)/include"
+	$(INSTALLBIN) -m755 tcc.exe  "$(tccdir)"
+	$(INSTALL) -m644 $(LIBTCC)  "$(libdir)"
+	$(INSTALL) -m644 $(LIBTCC1) "$(libdir)"
+	$(INSTALL) -m644 $(top_srcdir)/win32/lib/*.def "$(tccdir)/lib"
+	cp -r $(top_srcdir)/win32/include/. "$(includedir)"
+	$(INSTALL) -m644 $(addprefix $(top_srcdir)/include/,$(TCC_INCLUDES)) $(top_srcdir)/tcclib.h "$(includedir)"
+	$(INSTALL) -m644 $(top_srcdir)/libtcc.h $(LIBTCC_EXTRA) "$(includedir)/tcc"
 	cp -r $(top_srcdir)/win32/examples/. "$(tccdir)/examples"
-	$(INSTALL) -m644 $(addprefix $(top_srcdir)/include/,$(TCC_INCLUDES)) $(top_srcdir)/tcclib.h "$(tccdir)/include"
-	$(INSTALL) -m644 tcc-doc.html $(top_srcdir)/win32/tcc-win32.txt "$(tccdir)/doc"
-	$(INSTALL) -m644 $(top_srcdir)/libtcc.h $(LIBTCC_EXTRA) "$(tccdir)/libtcc"
-	$(INSTALL) -m644 $(LIBTCC) "$(tccdir)"
+	$(INSTALL) -m644 tcc-doc.html $(top_srcdir)/win32/tcc-win32.txt "$(docdir)"
 ifdef CONFIG_CROSS
 	mkdir -p "$(tccdir)/lib/32"
 	mkdir -p "$(tccdir)/lib/64"

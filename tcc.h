@@ -291,7 +291,11 @@ static inline void write64le(unsigned char *p, uint64_t x)
 /* library search paths */
 #ifndef CONFIG_TCC_LIBPATHS
 # ifdef TCC_TARGET_PE
-#  define CONFIG_TCC_LIBPATHS "{B}/lib"
+#  ifdef TCC_TARGET_X86_64
+#    define CONFIG_TCC_LIBPATHS "{B}/lib/64:{B}/lib"
+#  else
+#    define CONFIG_TCC_LIBPATHS "{B}/lib/32:{B}/lib"
+#  endif
 # else
 #  define CONFIG_TCC_LIBPATHS \
         ALSO_MUADIR(CONFIG_SYSROOT "/usr/" CONFIG_LDDIR) \
